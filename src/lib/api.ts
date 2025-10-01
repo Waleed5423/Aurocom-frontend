@@ -58,7 +58,7 @@ class ApiClient {
         );
     }
 
-    private getToken(): string | null {
+    public getToken(): string | null {
         if (typeof window !== 'undefined') {
             return localStorage.getItem('accessToken');
         }
@@ -490,6 +490,26 @@ class ApiClient {
             },
         });
 
+        return response.data;
+    }
+
+    async uploadMultipleFiles(files: File[], endpoint: string = '/upload-multiple'): Promise<ApiResponse> {
+        const formData = new FormData();
+        files.forEach(file => {
+            formData.append('files', file);
+        });
+
+        const response = await this.client.post<ApiResponse>(endpoint, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
+        return response.data;
+    }
+
+    async deleteUploadedFile(publicId: string): Promise<ApiResponse> {
+        const response = await this.client.delete<ApiResponse>(`/upload/${publicId}`);
         return response.data;
     }
 }
