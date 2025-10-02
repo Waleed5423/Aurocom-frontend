@@ -1,3 +1,4 @@
+// src/app/(admin)/aproducts/add/page.tsx - FIXED VERSION
 'use client';
 
 import { useState } from 'react';
@@ -5,10 +6,22 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { FileUpload, ImageUploadPreview } from '@/components/ui/FileUpload';
+import { useProductImageUpload } from '@/hooks/useUpload';
+
+// Define proper types for the upload response
+interface UploadResponse {
+  success: boolean;
+  data?: any[];
+  message?: string;
+}
 
 export default function AddProductPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<File[]>([]);
+  const { uploadProductImages, isUploading, progress } = useProductImageUpload();
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -17,6 +30,7 @@ export default function AddProductPage() {
     comparePrice: '',
     cost: '',
     category: '',
+    subcategory: '',
     sku: '',
     quantity: '',
     lowStockAlert: '5',
@@ -27,14 +41,40 @@ export default function AddProductPage() {
     trackQuantity: true
   });
 
+  const handleImageUpload = (files: File[]) => {
+    setUploadedImages(prev => [...prev, ...files]);
+  };
+
+  const removeImage = (index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      // Upload images first
+      let imageUrls: any[] = [];
+      if (uploadedImages.length > 0) {
+        const uploadResult = await uploadProductImages(uploadedImages);
+
+        // Type-safe check for upload result
+        if (uploadResult.success && 'data' in uploadResult && Array.isArray(uploadResult.data)) {
+          imageUrls = uploadResult.data.map((img: any, index: number) => ({
+            public_id: img.public_id || `img-${Date.now()}-${index}`,
+            url: img.url || '',
+            isDefault: index === 0
+          })).filter(img => img.url); // Filter out images without URLs
+        } else {
+          console.warn('Image upload completed but no data returned:', uploadResult.message);
+        }
+      }
+
       // Convert form data to proper types
       const productData = {
         ...formData,
+        images: imageUrls,
         price: parseFloat(formData.price),
         comparePrice: formData.comparePrice ? parseFloat(formData.comparePrice) : undefined,
         cost: formData.cost ? parseFloat(formData.cost) : undefined,
@@ -46,12 +86,21 @@ export default function AddProductPage() {
         trackQuantity: Boolean(formData.trackQuantity)
       };
 
-      // API call to create product would go here
-      console.log('Creating product:', productData);
-      
-      // Mock success - replace with actual API call
-      alert('Product created successfully!');
-      router.push('/aproducts');
+      // API call to create product
+      const response = await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      });
+
+      if (response.ok) {
+        alert('Product created successfully!');
+        router.push('/aproducts');
+      } else {
+        throw new Error('Failed to create product');
+      }
     } catch (error) {
       console.error('Error creating product:', error);
       alert('Failed to create product');
@@ -227,7 +276,16 @@ export default function AddProductPage() {
                 value={formData.category}
                 onChange={handleChange}
                 required
-                placeholder="Enter category ID or name"
+                placeholder="Enter category ID"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Subcategory</label>
+              <Input
+                name="subcategory"
+                value={formData.subcategory}
+                onChange={handleChange}
+                placeholder="Enter subcategory ID"
               />
             </div>
             <div>
@@ -251,6 +309,35 @@ export default function AddProductPage() {
           </div>
         </div>
 
+        {/* Images Section */}
+        <div className="border p-4 rounded">
+          <h2 className="text-lg font-semibold mb-4">Product Images</h2>
+          <FileUpload
+            onUpload={handleImageUpload}
+            multiple={true}
+            accept="image/*"
+            maxSize={5 * 1024 * 1024}
+            maxFiles={10}
+          />
+
+          {uploadedImages.length > 0 && (
+            <div className="mt-4">
+              <h3 className="font-medium mb-2">Selected Images:</h3>
+              <ImageUploadPreview
+                files={uploadedImages}
+                onRemove={removeImage}
+                uploadProgress={{}}
+              />
+            </div>
+          )}
+
+          {isUploading && (
+            <div className="mt-4">
+              <p>Uploading images... {progress}%</p>
+            </div>
+          )}
+        </div>
+
         {/* Options */}
         <div className="border p-4 rounded">
           <h2 className="text-lg font-semibold mb-4">Options</h2>
@@ -267,14 +354,8 @@ export default function AddProductPage() {
           </div>
         </div>
 
-        {/* Images Section - Placeholder */}
-        <div className="border p-4 rounded">
-          <h2 className="text-lg font-semibold mb-4">Images</h2>
-          <p className="text-gray-600">Image upload functionality will be implemented separately.</p>
-        </div>
-
         <div className="flex space-x-4">
-          <Button type="submit" disabled={isLoading}>
+          <Button type="submit" disabled={isLoading || isUploading}>
             {isLoading ? 'Creating Product...' : 'Create Product'}
           </Button>
           <Button type="button" variant="outline" onClick={() => router.push('/aproducts')}>
