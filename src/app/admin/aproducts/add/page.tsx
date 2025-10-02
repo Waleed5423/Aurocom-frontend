@@ -1,13 +1,14 @@
-// src/app/(admin)/aproducts/add/page.tsx - FIXED VERSION
+// src/app/admin/aproducts/add/page.tsx - FIXED VERSION
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { FileUpload, ImageUploadPreview } from '@/components/ui/FileUpload';
 import { useProductImageUpload } from '@/hooks/useUpload';
+import { useAdminStore } from '@/store/useAdminStore';
 
 // Define proper types for the upload response
 interface UploadResponse {
@@ -16,11 +17,18 @@ interface UploadResponse {
   message?: string;
 }
 
+interface UploadedImage {
+  public_id: string;
+  url: string;
+  isDefault: boolean;
+}
+
 export default function AddProductPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const { uploadProductImages, isUploading, progress } = useProductImageUpload();
+  const { categories, fetchCategories } = useAdminStore();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -41,6 +49,27 @@ export default function AddProductPage() {
     trackQuantity: true
   });
 
+  const [availableSubcategories, setAvailableSubcategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // Update subcategories when category changes
+  useEffect(() => {
+    if (formData.category) {
+      const subs = categories.filter(cat => cat.parent === formData.category);
+      setAvailableSubcategories(subs);
+      // Reset subcategory if parent category changes
+      if (!subs.find(sub => sub._id === formData.subcategory)) {
+        setFormData(prev => ({ ...prev, subcategory: '' }));
+      }
+    } else {
+      setAvailableSubcategories([]);
+      setFormData(prev => ({ ...prev, subcategory: '' }));
+    }
+  }, [formData.category, categories]);
+
   const handleImageUpload = (files: File[]) => {
     setUploadedImages(prev => [...prev, ...files]);
   };
@@ -55,7 +84,7 @@ export default function AddProductPage() {
 
     try {
       // Upload images first
-      let imageUrls: any[] = [];
+      let imageUrls: UploadedImage[] = [];
       if (uploadedImages.length > 0) {
         const uploadResult = await uploadProductImages(uploadedImages);
 
@@ -68,10 +97,11 @@ export default function AddProductPage() {
           })).filter(img => img.url); // Filter out images without URLs
         } else {
           console.warn('Image upload completed but no data returned:', uploadResult.message);
+          // You can choose to proceed without images or show an error
         }
       }
 
-      // Convert form data to proper types
+      // Prepare product data
       const productData = {
         ...formData,
         images: imageUrls,
@@ -83,27 +113,35 @@ export default function AddProductPage() {
         weight: formData.weight ? parseFloat(formData.weight) : undefined,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
         featured: Boolean(formData.featured),
-        trackQuantity: Boolean(formData.trackQuantity)
+        trackQuantity: Boolean(formData.trackQuantity),
+        // Only include subcategory if it's selected
+        ...(formData.subcategory && { subcategory: formData.subcategory })
       };
 
-      // API call to create product
-      const response = await fetch('/api/admin/products', {
+      // API call to create product - FIXED ENDPOINT
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/admin/products`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         },
         body: JSON.stringify(productData),
       });
 
       if (response.ok) {
-        alert('Product created successfully!');
-        router.push('/aproducts');
+        const result = await response.json();
+        if (result.success) {
+          alert('Product created successfully!');
+          router.push('/admin/aproducts');
+        } else {
+          throw new Error(result.message || 'Failed to create product');
+        }
       } else {
-        throw new Error('Failed to create product');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
     } catch (error) {
       console.error('Error creating product:', error);
-      alert('Failed to create product');
+      alert('Failed to create product: ' + (error as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -117,11 +155,16 @@ export default function AddProductPage() {
     }));
   };
 
+  // Get main categories (no parent)
+  const getMainCategories = () => {
+    return categories.filter(cat => !cat.parent);
+  };
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Add New Product</h1>
-        <Button variant="outline" onClick={() => router.push('/aproducts')}>
+        <Button variant="outline" onClick={() => router.push('/admin/aproducts')}>
           Back to Products
         </Button>
       </div>
@@ -169,6 +212,65 @@ export default function AddProductPage() {
                 required
                 placeholder="Detailed product description"
                 rows={4}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Organization */}
+        <div className="border p-4 rounded">
+          <h2 className="text-lg font-semibold mb-4">Organization</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Category *</label>
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="border p-2 rounded w-full"
+                required
+              >
+                <option value="">Select Category</option>
+                {getMainCategories().map(category => (
+                  <option key={category._id} value={category._id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Subcategory</label>
+              <select
+                name="subcategory"
+                value={formData.subcategory}
+                onChange={handleChange}
+                className="border p-2 rounded w-full"
+                disabled={!formData.category}
+              >
+                <option value="">No Subcategory</option>
+                {availableSubcategories.map(subcategory => (
+                  <option key={subcategory._id} value={subcategory._id}>
+                    {subcategory.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Brand</label>
+              <Input
+                name="brand"
+                value={formData.brand}
+                onChange={handleChange}
+                placeholder="Brand name"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-2">Tags</label>
+              <Input
+                name="tags"
+                value={formData.tags}
+                onChange={handleChange}
+                placeholder="Separate tags with commas"
               />
             </div>
           </div>
@@ -265,50 +367,6 @@ export default function AddProductPage() {
           </div>
         </div>
 
-        {/* Organization */}
-        <div className="border p-4 rounded">
-          <h2 className="text-lg font-semibold mb-4">Organization</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Category *</label>
-              <Input
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                required
-                placeholder="Enter category ID"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Subcategory</label>
-              <Input
-                name="subcategory"
-                value={formData.subcategory}
-                onChange={handleChange}
-                placeholder="Enter subcategory ID"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Brand</label>
-              <Input
-                name="brand"
-                value={formData.brand}
-                onChange={handleChange}
-                placeholder="Brand name"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-2">Tags</label>
-              <Input
-                name="tags"
-                value={formData.tags}
-                onChange={handleChange}
-                placeholder="Separate tags with commas"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Images Section */}
         <div className="border p-4 rounded">
           <h2 className="text-lg font-semibold mb-4">Product Images</h2>
@@ -358,7 +416,7 @@ export default function AddProductPage() {
           <Button type="submit" disabled={isLoading || isUploading}>
             {isLoading ? 'Creating Product...' : 'Create Product'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.push('/aproducts')}>
+          <Button type="button" variant="outline" onClick={() => router.push('/admin/aproducts')}>
             Cancel
           </Button>
         </div>

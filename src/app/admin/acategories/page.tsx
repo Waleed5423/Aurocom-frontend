@@ -1,4 +1,4 @@
-// src/app/(admin)/acategories/page.tsx - UPDATED WITH SUBCATEGORIES
+// src/app/admin/acategories/page.tsx - UPDATED
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -40,63 +40,10 @@ export default function AdminCategoriesPage() {
             setEditingCategory(null);
             setParentCategory(null);
             setFormData({ name: '', description: '', parent: '', featured: false, isActive: true });
-            fetchCategories();
+            fetchCategories(); // Refresh the list
         } catch (error) {
             console.error('Error saving category:', error);
             alert('Failed to save category');
-        }
-    };
-
-    const handleEdit = (category: any) => {
-        setEditingCategory(category);
-        setFormData({
-            name: category.name,
-            description: category.description || '',
-            parent: category.parent || '',
-            featured: category.featured,
-            isActive: category.isActive
-        });
-        setShowForm(true);
-    };
-
-    const handleAddSubcategory = (category: any) => {
-        setParentCategory(category);
-        setFormData({
-            name: '',
-            description: '',
-            parent: category._id,
-            featured: false,
-            isActive: true
-        });
-        setShowSubcategoryForm(true);
-    };
-
-    const handleCancel = () => {
-        setShowForm(false);
-        setShowSubcategoryForm(false);
-        setEditingCategory(null);
-        setParentCategory(null);
-        setFormData({ name: '', description: '', parent: '', featured: false, isActive: true });
-    };
-
-    const handleDelete = async (categoryId: string) => {
-        if (confirm('Are you sure you want to delete this category?')) {
-            try {
-                await deleteCategory(categoryId);
-                fetchCategories();
-            } catch (error) {
-                console.error('Error deleting category:', error);
-                alert('Failed to delete category');
-            }
-        }
-    };
-
-    const toggleCategoryStatus = async (categoryId: string, currentStatus: boolean) => {
-        try {
-            await updateCategory(categoryId, { isActive: !currentStatus });
-            fetchCategories();
-        } catch (error) {
-            console.error('Error updating category status:', error);
         }
     };
 
@@ -119,6 +66,7 @@ export default function AdminCategoriesPage() {
                 </div>
             </div>
 
+            {/* Form for adding/editing categories */}
             {(showForm || showSubcategoryForm) && (
                 <form onSubmit={handleSubmit} className="border p-4 mb-6 rounded">
                     <h3 className="font-semibold mb-4">
@@ -185,7 +133,13 @@ export default function AdminCategoriesPage() {
                         <Button type="submit">
                             {editingCategory ? 'Update' : 'Create'} Category
                         </Button>
-                        <Button type="button" variant="outline" onClick={handleCancel}>
+                        <Button type="button" variant="outline" onClick={() => {
+                            setShowForm(false);
+                            setShowSubcategoryForm(false);
+                            setEditingCategory(null);
+                            setParentCategory(null);
+                            setFormData({ name: '', description: '', parent: '', featured: false, isActive: true });
+                        }}>
                             Cancel
                         </Button>
                     </div>
@@ -222,25 +176,45 @@ export default function AdminCategoriesPage() {
                                     <div className="space-x-2">
                                         <Button
                                             variant="outline"
-                                            onClick={() => handleAddSubcategory(category)}
+                                            onClick={() => {
+                                                setParentCategory(category);
+                                                setFormData({
+                                                    name: '',
+                                                    description: '',
+                                                    parent: category._id,
+                                                    featured: false,
+                                                    isActive: true
+                                                });
+                                                setShowSubcategoryForm(true);
+                                            }}
                                         >
                                             Add Subcategory
                                         </Button>
                                         <Button
                                             variant={category.isActive ? "outline" : "default"}
-                                            onClick={() => toggleCategoryStatus(category._id, category.isActive)}
+                                            onClick={() => updateCategory(category._id, { isActive: !category.isActive })}
                                         >
                                             {category.isActive ? 'Deactivate' : 'Activate'}
                                         </Button>
                                         <Button
                                             variant="outline"
-                                            onClick={() => handleEdit(category)}
+                                            onClick={() => {
+                                                setEditingCategory(category);
+                                                setFormData({
+                                                    name: category.name,
+                                                    description: category.description || '',
+                                                    parent: category.parent || '',
+                                                    featured: category.featured,
+                                                    isActive: category.isActive
+                                                });
+                                                setShowForm(true);
+                                            }}
                                         >
                                             Edit
                                         </Button>
                                         <Button
                                             variant="destructive"
-                                            onClick={() => handleDelete(category._id)}
+                                            onClick={() => deleteCategory(category._id)}
                                             disabled={getSubcategories(category._id).length > 0}
                                             title={
                                                 getSubcategories(category._id).length > 0
@@ -268,21 +242,31 @@ export default function AdminCategoriesPage() {
                                                     <Button
                                                         variant={subcategory.isActive ? "outline" : "default"}
                                                         size="sm"
-                                                        onClick={() => toggleCategoryStatus(subcategory._id, subcategory.isActive)}
+                                                        onClick={() => updateCategory(subcategory._id, { isActive: !subcategory.isActive })}
                                                     >
                                                         {subcategory.isActive ? 'Deactivate' : 'Activate'}
                                                     </Button>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        onClick={() => handleEdit(subcategory)}
+                                                        onClick={() => {
+                                                            setEditingCategory(subcategory);
+                                                            setFormData({
+                                                                name: subcategory.name,
+                                                                description: subcategory.description || '',
+                                                                parent: subcategory.parent || '',
+                                                                featured: subcategory.featured,
+                                                                isActive: subcategory.isActive
+                                                            });
+                                                            setShowForm(true);
+                                                        }}
                                                     >
                                                         Edit
                                                     </Button>
                                                     <Button
                                                         variant="destructive"
                                                         size="sm"
-                                                        onClick={() => handleDelete(subcategory._id)}
+                                                        onClick={() => deleteCategory(subcategory._id)}
                                                     >
                                                         Delete
                                                     </Button>
