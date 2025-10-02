@@ -151,7 +151,7 @@ export const useAuth = create<AuthState>()(
                     throw error;
                 }
             },
-
+            
             updateProfile: async (profileData: Partial<User>) => {
                 set({ isLoading: true, error: null });
                 try {
