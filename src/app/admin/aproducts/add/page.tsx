@@ -119,7 +119,7 @@ export default function AddProductPage() {
       };
 
       // API call to create product - FIXED ENDPOINT
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/admin/products`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/products`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -49,7 +49,12 @@ export default function AdminCategoriesPage() {
 
     // Helper function to get subcategories for a parent category
     const getSubcategories = (categoryId: string) => {
-        return categories.filter(cat => cat.parent === categoryId);
+        return categories.filter(cat =>
+            cat.parent &&
+            (typeof cat.parent === 'string'
+                ? cat.parent === categoryId
+                : cat.parent._id === categoryId)
+        );
     };
 
     // Helper function to get main categories (no parent)

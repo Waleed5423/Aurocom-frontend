@@ -280,7 +280,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     fetchCategories: async (params?: any) => {
         set({ isLoading: true, error: null });
         try {
-            const response = await apiClient.getCategories(params);
+            const response = await apiClient.getCategories({ ...params, flat: 'true' });
             if (response.success) {
                 set({ categories: response.data.categories, isLoading: false });
             } else {
