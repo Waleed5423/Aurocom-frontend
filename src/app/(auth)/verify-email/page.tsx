@@ -22,9 +22,9 @@ export default function VerifyEmailPage() {
 
             try {
                 const response = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/verify-email?token=${token}`,
+                    `${process.env.NEXT_PUBLIC_API_URL}/auth/verify-email?token=${token}`,
                     {
-                        method: 'POST',
+                        method: 'GET', // Change from POST to GET
                         headers: {
                             'Content-Type': 'application/json',
                         },
