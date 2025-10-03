@@ -1,4 +1,4 @@
-// src/app/admin/acategories/page.tsx - SIMPLIFIED VERSION (remove image upload for now)
+// src/app/admin/acategories/page.tsx - UPDATED CATEGORY CREATION LOGIC
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -36,10 +36,20 @@ export default function AdminCategoriesPage() {
         }
 
         try {
+            // Prepare category data - only include parent if creating a subcategory
+            const categoryData = {
+                name: formData.name,
+                description: formData.description,
+                featured: formData.featured,
+                isActive: formData.isActive,
+                // Only include parent if we're creating a subcategory
+                ...(showSubcategoryForm && { parent: formData.parent })
+            };
+
             if (editingCategory) {
-                await updateCategory(editingCategory._id, formData);
+                await updateCategory(editingCategory._id, categoryData);
             } else {
-                await createCategory(formData);
+                await createCategory(categoryData);
             }
 
             setShowForm(false);
@@ -78,16 +88,23 @@ export default function AdminCategoriesPage() {
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Categories Management</h1>
                 <div className="space-x-2">
-                    <Button onClick={() => setShowForm(true)}>Add Category</Button>
+                    <Button onClick={() => {
+                        setShowForm(true);
+                        setShowSubcategoryForm(false);
+                        setEditingCategory(null);
+                        setParentCategory(null);
+                        setFormData({ name: '', description: '', parent: '', featured: false, isActive: true });
+                    }}>
+                        Add Main Category
+                    </Button>
                 </div>
             </div>
 
-            {/* Form for adding/editing categories */}
-            {(showForm || showSubcategoryForm) && (
+            {/* Form for adding main categories */}
+            {showForm && !showSubcategoryForm && (
                 <form onSubmit={handleSubmit} className="border p-4 mb-6 rounded bg-white shadow-sm">
                     <h3 className="font-semibold mb-4 text-lg">
-                        {showSubcategoryForm ? `Add Subcategory to ${parentCategory?.name}` :
-                            editingCategory ? 'Edit Category' : 'Add New Category'}
+                        {editingCategory ? 'Edit Category' : 'Add New Main Category'}
                     </h3>
                     <div className="space-y-4">
                         <div>
@@ -111,23 +128,6 @@ export default function AdminCategoriesPage() {
                                 className="w-full"
                             />
                         </div>
-                        {!showSubcategoryForm && !editingCategory && (
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Parent Category (Optional)</label>
-                                <select
-                                    value={formData.parent}
-                                    onChange={(e) => setFormData({ ...formData, parent: e.target.value })}
-                                    className="border p-2 rounded w-full"
-                                >
-                                    <option value="">No Parent (Main Category)</option>
-                                    {getMainCategories().map(category => (
-                                        <option key={category._id} value={category._id}>
-                                            {category.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
                         <div className="flex space-x-4">
                             <label className="flex items-center space-x-2">
                                 <input
@@ -158,8 +158,75 @@ export default function AdminCategoriesPage() {
                             variant="outline"
                             onClick={() => {
                                 setShowForm(false);
-                                setShowSubcategoryForm(false);
                                 setEditingCategory(null);
+                                setFormData({ name: '', description: '', parent: '', featured: false, isActive: true });
+                            }}
+                            disabled={isLoading}
+                        >
+                            Cancel
+                        </Button>
+                    </div>
+                </form>
+            )}
+
+            {/* Form for adding subcategories */}
+            {showSubcategoryForm && (
+                <form onSubmit={handleSubmit} className="border p-4 mb-6 rounded bg-white shadow-sm">
+                    <h3 className="font-semibold mb-4 text-lg">
+                        Add Subcategory to {parentCategory?.name}
+                    </h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Subcategory Name *</label>
+                            <Input
+                                type="text"
+                                placeholder="Subcategory Name"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                required
+                                className="w-full"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Description</label>
+                            <Textarea
+                                placeholder="Subcategory description"
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                rows={3}
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="flex space-x-4">
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.featured}
+                                    onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                                    className="w-4 h-4"
+                                />
+                                <span>Featured</span>
+                            </label>
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.isActive}
+                                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                                    className="w-4 h-4"
+                                />
+                                <span>Active</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div className="flex space-x-2 mt-4">
+                        <Button type="submit" disabled={isLoading}>
+                            {isLoading ? 'Creating...' : 'Create Subcategory'}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                                setShowSubcategoryForm(false);
                                 setParentCategory(null);
                                 setFormData({ name: '', description: '', parent: '', featured: false, isActive: true });
                             }}
@@ -171,7 +238,7 @@ export default function AdminCategoriesPage() {
                 </form>
             )}
 
-            {isLoading && !showForm ? (
+            {isLoading && !showForm && !showSubcategoryForm ? (
                 <div className="text-center py-8">Loading categories...</div>
             ) : (
                 <div className="space-y-6">
@@ -214,6 +281,7 @@ export default function AdminCategoriesPage() {
                                                     isActive: true
                                                 });
                                                 setShowSubcategoryForm(true);
+                                                setShowForm(false);
                                             }}
                                         >
                                             Add Subcategory
@@ -233,11 +301,12 @@ export default function AdminCategoriesPage() {
                                                 setFormData({
                                                     name: category.name,
                                                     description: category.description || '',
-                                                    parent: typeof category.parent === 'string' ? category.parent : category.parent?._id || '',
+                                                    parent: '',
                                                     featured: category.featured,
                                                     isActive: category.isActive
                                                 });
                                                 setShowForm(true);
+                                                setShowSubcategoryForm(false);
                                             }}
                                         >
                                             Edit
@@ -296,6 +365,7 @@ export default function AdminCategoriesPage() {
                                                                 isActive: subcategory.isActive
                                                             });
                                                             setShowForm(true);
+                                                            setShowSubcategoryForm(false);
                                                         }}
                                                     >
                                                         Edit

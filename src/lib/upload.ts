@@ -1,4 +1,4 @@
-// src/lib/upload.ts - FIXED EXPORTS
+// src/lib/upload.ts - FIXED ENDPOINTS
 import { apiClient } from './api';
 
 export interface UploadResponse {
@@ -34,8 +34,7 @@ class UploadService {
                 };
             }
 
-            // Use the correct endpoint path - just '/upload' not '/api/upload'
-            const response = await apiClient.uploadFile(file, '/upload');
+            const response = await apiClient.uploadFile(file, '/upload/upload');
             return response;
         } catch (error: any) {
             console.error('Upload error:', error);

@@ -1,4 +1,4 @@
-// src/lib/directUpload.ts - NEW FILE
+// src/lib/directUpload.ts - FIXED ENDPOINTS
 export interface UploadResponse {
     success: boolean;
     data?: any;
@@ -21,7 +21,7 @@ class DirectUploadService {
         return null;
     }
 
-    // Direct upload without using apiClient
+    // Direct upload without using apiClient - FIXED ENDPOINT
     async uploadFile(file: File): Promise<UploadResponse> {
         try {
             const validationError = this.validateFile(file);
@@ -37,7 +37,7 @@ class DirectUploadService {
 
             const token = localStorage.getItem('accessToken');
             
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/upload`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/upload/upload`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`

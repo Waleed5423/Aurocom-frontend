@@ -1,4 +1,4 @@
-// src/app/admin/aproducts/add/page.tsx - WITH IMAGE UPLOAD WORKAROUND
+// src/app/admin/aproducts/add/page.tsx - UPDATED WITH VARIANTS SECTION
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -144,7 +144,7 @@ export default function AddProductPage() {
     try {
       let finalImageUrls: UploadedImage[] = [];
 
-      // Try to upload images if any, but continue even if it fails
+      // Try to upload images if any
       if (uploadedImages.length > 0) {
         try {
           console.log('🔄 Attempting to upload images...');
@@ -152,26 +152,26 @@ export default function AddProductPage() {
           console.log('📦 Upload result:', uploadResult);
 
           if (uploadResult.success && uploadResult.data) {
+            // ✅ FIX: Properly extract the uploaded image data
             finalImageUrls = uploadResult.data.map((img: any, index: number) => ({
-              public_id: img.public_id || `img-${Date.now()}-${index}`,
-              url: img.url || img.secure_url || '',
+              public_id: img.public_id,
+              url: img.url || img.secure_url, // Use url or secure_url
               isDefault: index === 0
-            })).filter(img => img.url);
+            })).filter(img => img.public_id && img.url); // Ensure both fields exist
+
             console.log('✅ Final image URLs:', finalImageUrls);
           } else {
             console.warn('⚠️ Image upload failed, continuing without images:', uploadResult.message);
-            // Continue without images - don't throw error
           }
         } catch (uploadError) {
           console.error('💥 Image upload error, continuing without images:', uploadError);
-          // Continue without images - don't throw error
         }
       }
 
-      // Prepare product data - images are optional
+      // Prepare product data
       const productData = {
         ...formData,
-        // Only include images if we have them
+        // Include images if we have them
         ...(finalImageUrls.length > 0 && { images: finalImageUrls }),
         price: parseFloat(formData.price),
         comparePrice: formData.comparePrice ? parseFloat(formData.comparePrice) : undefined,
@@ -435,7 +435,85 @@ export default function AddProductPage() {
           </div>
         </div>
 
-        {/* Images Section - SIMPLIFIED */}
+        {/* Variants Section */}
+        <div className="border p-4 rounded">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold">Product Variants</h2>
+            <Button type="button" variant="outline" onClick={addVariant}>
+              Add Variant
+            </Button>
+          </div>
+
+          {variants.map((variant, variantIndex) => (
+            <div key={variantIndex} className="border p-4 rounded mb-4">
+              <div className="flex justify-between items-center mb-3">
+                <Input
+                  placeholder="Variant name (e.g., Size, Color)"
+                  value={variant.name}
+                  onChange={(e) => updateVariantName(variantIndex, e.target.value)}
+                  className="max-w-xs"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => removeVariant(variantIndex)}
+                >
+                  Remove Variant
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {variant.values.map((value, valueIndex) => (
+                  <div key={valueIndex} className="flex gap-3 items-center">
+                    <Input
+                      placeholder="Value (e.g., Small, Red)"
+                      value={value.value}
+                      onChange={(e) => updateVariantValue(variantIndex, valueIndex, 'value', e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Price"
+                      value={value.price}
+                      onChange={(e) => updateVariantValue(variantIndex, valueIndex, 'price', parseFloat(e.target.value))}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Stock"
+                      value={value.stock}
+                      onChange={(e) => updateVariantValue(variantIndex, valueIndex, 'stock', parseInt(e.target.value))}
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeVariantValue(variantIndex, valueIndex)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addVariantValue(variantIndex)}
+                >
+                  Add Value
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          {variants.length === 0 && (
+            <p className="text-gray-500 text-center py-4">
+              No variants added. Add variants like sizes, colors, etc.
+            </p>
+          )}
+        </div>
+
+        {/* Images Section */}
         <div className="border p-4 rounded">
           <h2 className="text-lg font-semibold mb-4">Product Images</h2>
 
