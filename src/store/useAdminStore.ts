@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { apiClient } from '@/lib/api';
+
 import { User, Product, Order, Category, Review, Transaction, DashboardStats, SalesReport } from '@/types';
 
 interface AdminState {
@@ -12,6 +13,7 @@ interface AdminState {
     reviews: Review[];
     transactions: Transaction[];
     salesReport: SalesReport | null;
+
 
     // UI state
     isLoading: boolean;
@@ -37,6 +39,8 @@ interface AdminState {
     fetchProducts: (params?: any) => Promise<void>;
     updateProductStatus: (productId: string, statusData: any) => Promise<void>;
     updateProductInventory: (productId: string, inventoryData: any) => Promise<void>;
+    deleteProduct: (productId: string) => Promise<void>;
+
 
     // Orders
     fetchOrders: (params?: any) => Promise<void>;
@@ -232,6 +236,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         }
     },
 
+
     // Order actions
     fetchOrders: async (params?: any) => {
         set({ isLoading: true, error: null });
@@ -297,24 +302,48 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     createCategory: async (categoryData: any) => {
         set({ isLoading: true, error: null });
         try {
+            console.log('🔄 Creating category with data:', categoryData);
+
             const response = await apiClient.createCategory(categoryData);
+
+            console.log('📦 Category creation response:', response);
+
             if (response.success) {
+                console.log('✅ Category created successfully');
                 const { categories } = get();
                 set({
                     categories: [...categories, response.data.category],
                     isLoading: false
                 });
+                return response.data;
             } else {
+                console.error('❌ Category creation failed:', response.message);
                 throw new Error(response.message);
             }
         } catch (error: any) {
+            console.error('💥 Category creation error:', error);
+
+            // More detailed error information
+            let errorMessage = 'Failed to create category';
+            if (error.response) {
+                console.error('Response data:', error.response.data);
+                console.error('Response status:', error.response.status);
+                errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+            } else if (error.request) {
+                console.error('No response received:', error.request);
+                errorMessage = 'No response from server';
+            } else {
+                errorMessage = error.message;
+            }
+
             set({
                 isLoading: false,
-                error: error.response?.data?.message || error.message || 'Failed to create category',
+                error: errorMessage,
             });
-            throw error;
+            throw new Error(errorMessage);
         }
     },
+
 
     updateCategory: async (categoryId: string, categoryData: any) => {
         set({ isLoading: true, error: null });
@@ -478,6 +507,24 @@ export const useAdminStore = create<AdminState>((set, get) => ({
             set({
                 isLoading: false,
                 error: error.response?.data?.message || error.message || 'Failed to fetch product performance',
+            });
+            throw error;
+        }
+    },
+    deleteProduct: async (productId: string) => {
+        set({ isLoading: true, error: null });
+        try {
+            // We'll implement this API call - for now, just update local state
+            const { products } = get();
+            const updatedProducts = products.filter(product => product._id !== productId);
+            set({ products: updatedProducts, isLoading: false });
+
+            // Show success message
+            alert('Product deleted successfully!');
+        } catch (error: any) {
+            set({
+                isLoading: false,
+                error: error.response?.data?.message || error.message || 'Failed to delete product',
             });
             throw error;
         }

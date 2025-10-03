@@ -484,11 +484,7 @@ class ApiClient {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await this.client.post<ApiResponse>(endpoint, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+        const response = await this.client.post<ApiResponse>(endpoint, formData);
 
         return response.data;
     }
@@ -499,17 +495,22 @@ class ApiClient {
             formData.append('files', file);
         });
 
-        const response = await this.client.post<ApiResponse>(endpoint, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+        const response = await this.client.post<ApiResponse>(endpoint, formData);
 
         return response.data;
     }
 
     async deleteUploadedFile(publicId: string): Promise<ApiResponse> {
         const response = await this.client.delete<ApiResponse>(`/upload/${publicId}`);
+        return response.data;
+    }
+
+    async getAdminCoupons(params?: any): Promise<ApiResponse> {
+        const response = await this.client.get<ApiResponse>('/admin/coupons', { params });
+        return response.data;
+    }
+    async deleteProduct(productId: string): Promise<ApiResponse> {
+        const response = await this.client.delete<ApiResponse>(`/products/${productId}`);
         return response.data;
     }
 }

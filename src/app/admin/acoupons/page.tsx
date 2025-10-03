@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAdminStore } from '@/store/useAdminStore';
+import { apiClient } from '@/lib/api';
+
 
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState([]);
@@ -36,9 +38,10 @@ export default function AdminCouponsPage() {
 
   const fetchCoupons = async () => {
     try {
-      // This would be implemented with your API
-      // const response = await apiClient.get('/admin/coupons');
-      // setCoupons(response.data.coupons);
+      const response = await apiClient.getAdminCoupons(); 
+      if (response.success) {
+        setCoupons(response.data.coupons);
+      }
     } catch (error) {
       console.error('Failed to fetch coupons:', error);
     }

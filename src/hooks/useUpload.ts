@@ -1,24 +1,18 @@
+// src/hooks/useUpload.ts - SIMPLEST WORKING VERSION
 import { useState } from 'react';
-import { uploadService, UploadResponse } from '@/lib/upload';
 
-interface UseUploadOptions {
-  onSuccess?: (data: any) => void;
-  onError?: (error: string) => void;
-  onProgress?: (progress: number) => void;
-}
-
-export const useUpload = (options: UseUploadOptions = {}) => {
+export const useUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const uploadFile = async (file: File, endpoint?: string, uploadOptions?: any): Promise<UploadResponse> => {
+  const uploadMultipleFiles = async (files: File[]): Promise<{ success: boolean; data?: any[]; message?: string }> => {
     setIsUploading(true);
     setProgress(0);
     setError(null);
 
     try {
-      // Simulate progress (in real implementation, you'd use axios with onUploadProgress)
+      // Simulate progress
       const progressInterval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 90) {
@@ -29,22 +23,30 @@ export const useUpload = (options: UseUploadOptions = {}) => {
         });
       }, 100);
 
-      const result = await uploadService.uploadFile(file, endpoint, uploadOptions);
+      const uploadPromises = files.map(file => uploadSingleFile(file));
+      const results = await Promise.all(uploadPromises);
 
       clearInterval(progressInterval);
       setProgress(100);
 
-      if (result.success) {
-        options.onSuccess?.(result.data);
-        return result;
-      } else {
-        setError(result.message || 'Upload failed');
-        options.onError?.(result.message || 'Upload failed');
-        return result;
+      const successfulUploads = results.filter(result => result.success);
+      const failedUploads = results.filter(result => !result.success);
+
+      if (failedUploads.length > 0) {
+        const errorMessage = `${failedUploads.length} files failed to upload`;
+        setError(errorMessage);
+        return {
+          success: false,
+          message: errorMessage
+        };
       }
+
+      return {
+        success: true,
+        data: successfulUploads.map(result => result.data)
+      };
     } catch (error: any) {
       setError(error.message || 'Upload failed');
-      options.onError?.(error.message || 'Upload failed');
       return {
         success: false,
         message: error.message || 'Upload failed'
@@ -55,40 +57,11 @@ export const useUpload = (options: UseUploadOptions = {}) => {
     }
   };
 
-  const uploadMultipleFiles = async (files: File[], endpoint?: string, uploadOptions?: any) => {
-    setIsUploading(true);
-    setProgress(0);
-    setError(null);
-
-    try {
-      const result = await uploadService.uploadMultipleFiles(files, endpoint, uploadOptions);
-
-      if (result.success) {
-        options.onSuccess?.(result.data);
-        return result;
-      } else {
-        setError(result.message || 'Upload failed');
-        options.onError?.(result.message || 'Upload failed');
-        return result;
-      }
-    } catch (error: any) {
-      setError(error.message || 'Upload failed');
-      options.onError?.(error.message || 'Upload failed');
-      return {
-        success: false,
-        message: error.message || 'Upload failed'
-      };
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   const clearError = () => {
     setError(null);
   };
 
   return {
-    uploadFile,
     uploadMultipleFiles,
     isUploading,
     progress,
@@ -97,67 +70,52 @@ export const useUpload = (options: UseUploadOptions = {}) => {
   };
 };
 
-// Specialized upload hooks
-export const useProductImageUpload = (productId?: string) => {
-  const upload = useUpload();
+// Helper function for single file upload
+async function uploadSingleFile(file: File): Promise<{ success: boolean; data?: any; message?: string }> {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
 
-  const uploadProductImage = (file: File) => {
-    return upload.uploadFile(file, '/upload', { 
-      folder: productId ? `aurocom/products/${productId}` : 'aurocom/products' 
+    const token = localStorage.getItem('accessToken');
+    
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
     });
-  };
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      return {
+        success: true,
+        data: result.data
+      };
+    } else {
+      return {
+        success: false,
+        message: result.message || 'Upload failed'
+      };
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || 'Upload failed'
+    };
+  }
+}
+
+export const useProductImageUpload = () => {
+  const upload = useUpload();
 
   const uploadProductImages = (files: File[]) => {
-    return upload.uploadMultipleFiles(files, '/upload-multiple', { 
-      folder: productId ? `aurocom/products/${productId}` : 'aurocom/products' 
-    });
+    return upload.uploadMultipleFiles(files);
   };
 
   return {
     ...upload,
-    uploadProductImage,
     uploadProductImages
-  };
-};
-
-export const useUserAvatarUpload = (userId: string) => {
-  const upload = useUpload();
-
-  const uploadAvatar = (file: File) => {
-    return upload.uploadFile(file, '/upload', { 
-      folder: `aurocom/users/${userId}/avatar`,
-      transformation: {
-        width: 200,
-        height: 200,
-        crop: 'fill',
-        quality: 'auto'
-      }
-    });
-  };
-
-  return {
-    ...upload,
-    uploadAvatar
-  };
-};
-
-export const useCategoryImageUpload = (categoryId?: string) => {
-  const upload = useUpload();
-
-  const uploadCategoryImage = (file: File) => {
-    return upload.uploadFile(file, '/upload', { 
-      folder: categoryId ? `aurocom/categories/${categoryId}` : 'aurocom/categories',
-      transformation: {
-        width: 400,
-        height: 400,
-        crop: 'fill',
-        quality: 'auto'
-      }
-    });
-  };
-
-  return {
-    ...upload,
-    uploadCategoryImage
   };
 };

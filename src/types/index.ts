@@ -34,8 +34,8 @@ export interface Product {
     name: string;
     description: string;
     shortDescription?: string;
-    category: Category;
-    subcategory?: Category;
+    category: string | Category;
+    subcategory?: string | Category;
     price: number;
     comparePrice?: number;
     cost?: number;
@@ -45,37 +45,37 @@ export interface Product {
     lowStockAlert: number;
     weight?: number;
     dimensions?: {
-        length: number;
-        width: number;
-        height: number;
+      length: number;
+      width: number;
+      height: number;
     };
     images: ProductImage[];
-    variants?: Variant[];
+    variants?: ProductVariant[];
     tags: string[];
     brand?: string;
     featured: boolean;
     isActive: boolean;
     seo?: {
-        title?: string;
-        description?: string;
-        slug?: string;
+      title?: string;
+      description?: string;
+      slug?: string;
     };
     ratings: {
-        average: number;
-        count: number;
-        distribution?: {
-            1: number;
-            2: number;
-            3: number;
-            4: number;
-            5: number;
-        };
+      average: number;
+      count: number;
+      distribution?: {
+        1: number;
+        2: number;
+        3: number;
+        4: number;
+        5: number;
+      };
     };
     salesCount: number;
     inStock?: boolean;
     createdAt: string;
     updatedAt: string;
-}
+  }
 
 export interface ProductImage {
     public_id: string;
@@ -88,12 +88,18 @@ export interface Variant {
     values: VariantValue[];
 }
 
-export interface VariantValue {
+export interface ProductVariant {
+    name: string;
+    values: VariantValue[];
+  }
+  
+  export interface VariantValue {
     value: string;
     price: number;
     stock: number;
     sku?: string;
-}
+  }
+  
 
 // Category types
 export interface Category {
@@ -101,15 +107,16 @@ export interface Category {
     name: string;
     description?: string;
     image?: {
-        public_id: string;
-        url: string;
+      public_id: string;
+      url: string;
     };
-    parent?: string;
+    parent?: string | Category;
     isActive: boolean;
     featured: boolean;
     subcategories?: Category[];
     productsCount?: number;
-}
+  }
+  
 
 // Cart types
 export interface Cart {

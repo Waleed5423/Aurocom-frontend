@@ -1,13 +1,11 @@
-// src/lib/upload.ts - FIXED EXPORTS
-import { apiClient } from './api';
-
+// src/lib/directUpload.ts - NEW FILE
 export interface UploadResponse {
     success: boolean;
     data?: any;
     message?: string;
 }
 
-class UploadService {
+class DirectUploadService {
     private validateFile(file: File): string | null {
         const maxSize = 5 * 1024 * 1024; // 5MB
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -23,7 +21,7 @@ class UploadService {
         return null;
     }
 
-    // Single file upload - FIXED PATH
+    // Direct upload without using apiClient
     async uploadFile(file: File): Promise<UploadResponse> {
         try {
             const validationError = this.validateFile(file);
@@ -34,11 +32,34 @@ class UploadService {
                 };
             }
 
-            // Use the correct endpoint path - just '/upload' not '/api/upload'
-            const response = await apiClient.uploadFile(file, '/upload');
-            return response;
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const token = localStorage.getItem('accessToken');
+            
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/upload`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                return {
+                    success: true,
+                    data: result.data
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.message || 'Upload failed'
+                };
+            }
         } catch (error: any) {
-            console.error('Upload error:', error);
+            console.error('Direct upload error:', error);
             return {
                 success: false,
                 message: error.message || 'Upload failed'
@@ -46,7 +67,6 @@ class UploadService {
         }
     }
 
-    // Upload multiple files by uploading one by one
     async uploadMultipleFiles(files: File[]): Promise<{ success: boolean; data?: any[]; message?: string }> {
         try {
             const uploadPromises = files.map(file => this.uploadFile(file));
@@ -74,12 +94,6 @@ class UploadService {
             };
         }
     }
-
-    // Product image upload
-    async uploadProductImages(files: File[]): Promise<{ success: boolean; data?: any[]; message?: string }> {
-        return this.uploadMultipleFiles(files);
-    }
 }
 
-// Export the service instance
-export const uploadService = new UploadService();
+export const directUploadService = new DirectUploadService();

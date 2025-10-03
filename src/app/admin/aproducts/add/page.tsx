@@ -1,4 +1,4 @@
-// src/app/admin/aproducts/add/page.tsx - FIXED VERSION
+// src/app/admin/aproducts/add/page.tsx - WITH IMAGE UPLOAD WORKAROUND
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,16 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { FileUpload, ImageUploadPreview } from '@/components/ui/FileUpload';
 import { useProductImageUpload } from '@/hooks/useUpload';
 import { useAdminStore } from '@/store/useAdminStore';
-
-// Define proper types for the upload response
-interface UploadResponse {
-  success: boolean;
-  data?: any[];
-  message?: string;
-}
 
 interface UploadedImage {
   public_id: string;
@@ -27,6 +19,7 @@ export default function AddProductPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
+  const [imageUrls, setImageUrls] = useState<UploadedImage[]>([]);
   const { uploadProductImages, isUploading, progress } = useProductImageUpload();
   const { categories, fetchCategories } = useAdminStore();
 
@@ -49,6 +42,7 @@ export default function AddProductPage() {
     trackQuantity: true
   });
 
+  const [variants, setVariants] = useState<any[]>([]);
   const [availableSubcategories, setAvailableSubcategories] = useState<any[]>([]);
 
   useEffect(() => {
@@ -58,14 +52,17 @@ export default function AddProductPage() {
   // Update subcategories when category changes
   useEffect(() => {
     if (formData.category) {
-      const subs = categories.filter(cat =>
-        cat.parent &&
-        (typeof cat.parent === 'string'
-          ? cat.parent === formData.category
-          : cat.parent._id === formData.category)
-      );
+      const subs = categories.filter(cat => {
+        if (cat.parent) {
+          if (typeof cat.parent === 'string') {
+            return cat.parent === formData.category;
+          } else {
+            return cat.parent._id === formData.category;
+          }
+        }
+        return false;
+      });
       setAvailableSubcategories(subs);
-      // Reset subcategory if parent category changes
       if (!subs.find(sub => sub._id === formData.subcategory)) {
         setFormData(prev => ({ ...prev, subcategory: '' }));
       }
@@ -77,10 +74,67 @@ export default function AddProductPage() {
 
   const handleImageUpload = (files: File[]) => {
     setUploadedImages(prev => [...prev, ...files]);
+
+    // Create temporary URLs for preview
+    const newImageUrls = files.map((file, index) => ({
+      public_id: `temp-${Date.now()}-${index}`,
+      url: URL.createObjectURL(file),
+      isDefault: imageUrls.length === 0 && index === 0
+    }));
+
+    setImageUrls(prev => [...prev, ...newImageUrls]);
   };
 
   const removeImage = (index: number) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
+    setImageUrls(prev => prev.filter((_, i) => i !== index));
+
+    // Revoke object URL to prevent memory leaks
+    URL.revokeObjectURL(imageUrls[index].url);
+  };
+
+  // Variant Management Functions
+  const addVariant = () => {
+    setVariants(prev => [...prev, { name: '', values: [] }]);
+  };
+
+  const removeVariant = (index: number) => {
+    setVariants(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateVariantName = (index: number, name: string) => {
+    setVariants(prev => prev.map((variant, i) =>
+      i === index ? { ...variant, name } : variant
+    ));
+  };
+
+  const addVariantValue = (variantIndex: number) => {
+    setVariants(prev => prev.map((variant, i) =>
+      i === variantIndex
+        ? { ...variant, values: [...variant.values, { value: '', price: 0, stock: 0 }] }
+        : variant
+    ));
+  };
+
+  const removeVariantValue = (variantIndex: number, valueIndex: number) => {
+    setVariants(prev => prev.map((variant, i) =>
+      i === variantIndex
+        ? { ...variant, values: variant.values.filter((_, j) => j !== valueIndex) }
+        : variant
+    ));
+  };
+
+  const updateVariantValue = (variantIndex: number, valueIndex: number, field: string, value: any) => {
+    setVariants(prev => prev.map((variant, i) =>
+      i === variantIndex
+        ? {
+          ...variant,
+          values: variant.values.map((val, j) =>
+            j === valueIndex ? { ...val, [field]: value } : val
+          )
+        }
+        : variant
+    ));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,28 +142,37 @@ export default function AddProductPage() {
     setIsLoading(true);
 
     try {
-      // Upload images first
-      let imageUrls: UploadedImage[] = [];
-      if (uploadedImages.length > 0) {
-        const uploadResult = await uploadProductImages(uploadedImages);
+      let finalImageUrls: UploadedImage[] = [];
 
-        // Type-safe check for upload result
-        if (uploadResult.success && 'data' in uploadResult && Array.isArray(uploadResult.data)) {
-          imageUrls = uploadResult.data.map((img: any, index: number) => ({
-            public_id: img.public_id || `img-${Date.now()}-${index}`,
-            url: img.url || '',
-            isDefault: index === 0
-          })).filter(img => img.url); // Filter out images without URLs
-        } else {
-          console.warn('Image upload completed but no data returned:', uploadResult.message);
-          // You can choose to proceed without images or show an error
+      // Try to upload images if any, but continue even if it fails
+      if (uploadedImages.length > 0) {
+        try {
+          console.log('🔄 Attempting to upload images...');
+          const uploadResult = await uploadProductImages(uploadedImages);
+          console.log('📦 Upload result:', uploadResult);
+
+          if (uploadResult.success && uploadResult.data) {
+            finalImageUrls = uploadResult.data.map((img: any, index: number) => ({
+              public_id: img.public_id || `img-${Date.now()}-${index}`,
+              url: img.url || img.secure_url || '',
+              isDefault: index === 0
+            })).filter(img => img.url);
+            console.log('✅ Final image URLs:', finalImageUrls);
+          } else {
+            console.warn('⚠️ Image upload failed, continuing without images:', uploadResult.message);
+            // Continue without images - don't throw error
+          }
+        } catch (uploadError) {
+          console.error('💥 Image upload error, continuing without images:', uploadError);
+          // Continue without images - don't throw error
         }
       }
 
-      // Prepare product data
+      // Prepare product data - images are optional
       const productData = {
         ...formData,
-        images: imageUrls,
+        // Only include images if we have them
+        ...(finalImageUrls.length > 0 && { images: finalImageUrls }),
         price: parseFloat(formData.price),
         comparePrice: formData.comparePrice ? parseFloat(formData.comparePrice) : undefined,
         cost: formData.cost ? parseFloat(formData.cost) : undefined,
@@ -119,11 +182,13 @@ export default function AddProductPage() {
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
         featured: Boolean(formData.featured),
         trackQuantity: Boolean(formData.trackQuantity),
-        // Only include subcategory if it's selected
+        variants: variants.filter(variant => variant.name && variant.values.length > 0),
         ...(formData.subcategory && { subcategory: formData.subcategory })
       };
 
-      // API call to create product - FIXED ENDPOINT
+      console.log('📤 Sending product data:', productData);
+
+      // API call to create product
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/products`, {
         method: 'POST',
         headers: {
@@ -133,19 +198,17 @@ export default function AddProductPage() {
         body: JSON.stringify(productData),
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          alert('Product created successfully!');
-          router.push('/admin/aproducts');
-        } else {
-          throw new Error(result.message || 'Failed to create product');
-        }
+      const result = await response.json();
+      console.log('📨 Create product response:', result);
+
+      if (response.ok && result.success) {
+        alert('Product created successfully!');
+        router.push('/admin/aproducts');
       } else {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(result.message || `Failed to create product: ${response.status}`);
       }
     } catch (error) {
-      console.error('Error creating product:', error);
+      console.error('💥 Error creating product:', error);
       alert('Failed to create product: ' + (error as Error).message);
     } finally {
       setIsLoading(false);
@@ -372,31 +435,60 @@ export default function AddProductPage() {
           </div>
         </div>
 
-        {/* Images Section */}
+        {/* Images Section - SIMPLIFIED */}
         <div className="border p-4 rounded">
           <h2 className="text-lg font-semibold mb-4">Product Images</h2>
-          <FileUpload
-            onUpload={handleImageUpload}
-            multiple={true}
-            accept="image/*"
-            maxSize={5 * 1024 * 1024}
-            maxFiles={10}
-          />
 
-          {uploadedImages.length > 0 && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Upload Images</label>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={(e) => {
+                if (e.target.files) {
+                  handleImageUpload(Array.from(e.target.files));
+                }
+              }}
+              className="w-full p-2 border rounded"
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              Maximum 10 images, 5MB each. Supported formats: JPG, PNG, WebP, GIF
+            </p>
+          </div>
+
+          {imageUrls.length > 0 && (
             <div className="mt-4">
-              <h3 className="font-medium mb-2">Selected Images:</h3>
-              <ImageUploadPreview
-                files={uploadedImages}
-                onRemove={removeImage}
-                uploadProgress={{}}
-              />
+              <h3 className="font-medium mb-2">Selected Images ({imageUrls.length}):</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {imageUrls.map((image, index) => (
+                  <div key={index} className="relative border rounded p-2">
+                    <img
+                      src={image.url}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-24 object-cover rounded"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
+                    >
+                      ×
+                    </button>
+                    {image.isDefault && (
+                      <span className="absolute -top-2 -left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                        Default
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {isUploading && (
-            <div className="mt-4">
-              <p>Uploading images... {progress}%</p>
+            <div className="mt-4 p-3 bg-blue-50 rounded">
+              <p className="text-blue-700">Uploading images... {progress}%</p>
             </div>
           )}
         </div>

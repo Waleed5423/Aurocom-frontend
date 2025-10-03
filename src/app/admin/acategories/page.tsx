@@ -1,4 +1,4 @@
-// src/app/admin/acategories/page.tsx - UPDATED
+// src/app/admin/acategories/page.tsx - SIMPLIFIED VERSION (remove image upload for now)
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -6,13 +6,14 @@ import { useAdminStore } from '@/store/useAdminStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Category } from '@/types';
 
 export default function AdminCategoriesPage() {
     const { categories, fetchCategories, createCategory, updateCategory, deleteCategory, isLoading } = useAdminStore();
     const [showForm, setShowForm] = useState(false);
     const [showSubcategoryForm, setShowSubcategoryForm] = useState(false);
-    const [editingCategory, setEditingCategory] = useState<any>(null);
-    const [parentCategory, setParentCategory] = useState<any>(null);
+    const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+    const [parentCategory, setParentCategory] = useState<Category | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -28,6 +29,12 @@ export default function AdminCategoriesPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // Basic validation
+        if (!formData.name.trim()) {
+            alert('Category name is required');
+            return;
+        }
+
         try {
             if (editingCategory) {
                 await updateCategory(editingCategory._id, formData);
@@ -40,21 +47,25 @@ export default function AdminCategoriesPage() {
             setEditingCategory(null);
             setParentCategory(null);
             setFormData({ name: '', description: '', parent: '', featured: false, isActive: true });
-            fetchCategories(); // Refresh the list
+            fetchCategories();
         } catch (error) {
             console.error('Error saving category:', error);
-            alert('Failed to save category');
+            alert('Failed to save category. Please check the console for details.');
         }
     };
 
     // Helper function to get subcategories for a parent category
     const getSubcategories = (categoryId: string) => {
-        return categories.filter(cat =>
-            cat.parent &&
-            (typeof cat.parent === 'string'
-                ? cat.parent === categoryId
-                : cat.parent._id === categoryId)
-        );
+        return categories.filter(cat => {
+            if (cat.parent) {
+                if (typeof cat.parent === 'string') {
+                    return cat.parent === categoryId;
+                } else {
+                    return cat.parent._id === categoryId;
+                }
+            }
+            return false;
+        });
     };
 
     // Helper function to get main categories (no parent)
@@ -73,8 +84,8 @@ export default function AdminCategoriesPage() {
 
             {/* Form for adding/editing categories */}
             {(showForm || showSubcategoryForm) && (
-                <form onSubmit={handleSubmit} className="border p-4 mb-6 rounded">
-                    <h3 className="font-semibold mb-4">
+                <form onSubmit={handleSubmit} className="border p-4 mb-6 rounded bg-white shadow-sm">
+                    <h3 className="font-semibold mb-4 text-lg">
                         {showSubcategoryForm ? `Add Subcategory to ${parentCategory?.name}` :
                             editingCategory ? 'Edit Category' : 'Add New Category'}
                     </h3>
@@ -87,6 +98,7 @@ export default function AdminCategoriesPage() {
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 required
+                                className="w-full"
                             />
                         </div>
                         <div>
@@ -96,6 +108,7 @@ export default function AdminCategoriesPage() {
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                 rows={3}
+                                className="w-full"
                             />
                         </div>
                         {!showSubcategoryForm && !editingCategory && (
@@ -121,6 +134,7 @@ export default function AdminCategoriesPage() {
                                     type="checkbox"
                                     checked={formData.featured}
                                     onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                                    className="w-4 h-4"
                                 />
                                 <span>Featured Category</span>
                             </label>
@@ -129,35 +143,41 @@ export default function AdminCategoriesPage() {
                                     type="checkbox"
                                     checked={formData.isActive}
                                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                                    className="w-4 h-4"
                                 />
                                 <span>Active</span>
                             </label>
                         </div>
                     </div>
                     <div className="flex space-x-2 mt-4">
-                        <Button type="submit">
-                            {editingCategory ? 'Update' : 'Create'} Category
+                        <Button type="submit" disabled={isLoading}>
+                            {isLoading ? 'Saving...' : (editingCategory ? 'Update' : 'Create') + ' Category'}
                         </Button>
-                        <Button type="button" variant="outline" onClick={() => {
-                            setShowForm(false);
-                            setShowSubcategoryForm(false);
-                            setEditingCategory(null);
-                            setParentCategory(null);
-                            setFormData({ name: '', description: '', parent: '', featured: false, isActive: true });
-                        }}>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                                setShowForm(false);
+                                setShowSubcategoryForm(false);
+                                setEditingCategory(null);
+                                setParentCategory(null);
+                                setFormData({ name: '', description: '', parent: '', featured: false, isActive: true });
+                            }}
+                            disabled={isLoading}
+                        >
                             Cancel
                         </Button>
                     </div>
                 </form>
             )}
 
-            {isLoading ? (
-                <div>Loading categories...</div>
+            {isLoading && !showForm ? (
+                <div className="text-center py-8">Loading categories...</div>
             ) : (
                 <div className="space-y-6">
                     {getMainCategories().map((category) => (
                         <div key={category._id}>
-                            <div className="border p-4 rounded">
+                            <div className="border p-4 rounded bg-white shadow-sm">
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1">
                                         <div className="flex items-center space-x-2 mb-2">
@@ -173,14 +193,17 @@ export default function AdminCategoriesPage() {
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-gray-600">{category.description}</p>
+                                        {category.description && (
+                                            <p className="text-gray-600 mb-2">{category.description}</p>
+                                        )}
                                         <div className="flex space-x-4 mt-2 text-sm text-gray-500">
                                             <span>Subcategories: {getSubcategories(category._id).length}</span>
                                         </div>
                                     </div>
-                                    <div className="space-x-2">
+                                    <div className="flex flex-col space-y-2">
                                         <Button
                                             variant="outline"
+                                            size="sm"
                                             onClick={() => {
                                                 setParentCategory(category);
                                                 setFormData({
@@ -197,18 +220,20 @@ export default function AdminCategoriesPage() {
                                         </Button>
                                         <Button
                                             variant={category.isActive ? "outline" : "default"}
+                                            size="sm"
                                             onClick={() => updateCategory(category._id, { isActive: !category.isActive })}
                                         >
                                             {category.isActive ? 'Deactivate' : 'Activate'}
                                         </Button>
                                         <Button
                                             variant="outline"
+                                            size="sm"
                                             onClick={() => {
                                                 setEditingCategory(category);
                                                 setFormData({
                                                     name: category.name,
                                                     description: category.description || '',
-                                                    parent: category.parent || '',
+                                                    parent: typeof category.parent === 'string' ? category.parent : category.parent?._id || '',
                                                     featured: category.featured,
                                                     isActive: category.isActive
                                                 });
@@ -219,7 +244,12 @@ export default function AdminCategoriesPage() {
                                         </Button>
                                         <Button
                                             variant="destructive"
-                                            onClick={() => deleteCategory(category._id)}
+                                            size="sm"
+                                            onClick={() => {
+                                                if (confirm(`Are you sure you want to delete "${category.name}"?`)) {
+                                                    deleteCategory(category._id);
+                                                }
+                                            }}
                                             disabled={getSubcategories(category._id).length > 0}
                                             title={
                                                 getSubcategories(category._id).length > 0
@@ -241,9 +271,11 @@ export default function AdminCategoriesPage() {
                                             <div className="flex justify-between items-center bg-gray-50 p-3 rounded">
                                                 <div>
                                                     <h4 className="font-medium">{subcategory.name}</h4>
-                                                    <p className="text-sm text-gray-600">{subcategory.description}</p>
+                                                    {subcategory.description && (
+                                                        <p className="text-sm text-gray-600">{subcategory.description}</p>
+                                                    )}
                                                 </div>
-                                                <div className="space-x-2">
+                                                <div className="flex space-x-2">
                                                     <Button
                                                         variant={subcategory.isActive ? "outline" : "default"}
                                                         size="sm"
@@ -259,7 +291,7 @@ export default function AdminCategoriesPage() {
                                                             setFormData({
                                                                 name: subcategory.name,
                                                                 description: subcategory.description || '',
-                                                                parent: subcategory.parent || '',
+                                                                parent: typeof subcategory.parent === 'string' ? subcategory.parent : subcategory.parent?._id || '',
                                                                 featured: subcategory.featured,
                                                                 isActive: subcategory.isActive
                                                             });
@@ -271,7 +303,11 @@ export default function AdminCategoriesPage() {
                                                     <Button
                                                         variant="destructive"
                                                         size="sm"
-                                                        onClick={() => deleteCategory(subcategory._id)}
+                                                        onClick={() => {
+                                                            if (confirm(`Are you sure you want to delete "${subcategory.name}"?`)) {
+                                                                deleteCategory(subcategory._id);
+                                                            }
+                                                        }}
                                                     >
                                                         Delete
                                                     </Button>
@@ -287,8 +323,11 @@ export default function AdminCategoriesPage() {
             )}
 
             {categories.length === 0 && !isLoading && (
-                <div className="text-center py-8 text-gray-500">
-                    No categories found. Create your first category to get started.
+                <div className="text-center py-8 text-gray-500 border rounded-lg bg-gray-50">
+                    <p className="mb-4">No categories found.</p>
+                    <Button onClick={() => setShowForm(true)}>
+                        Create Your First Category
+                    </Button>
                 </div>
             )}
         </div>
