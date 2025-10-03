@@ -58,7 +58,12 @@ export default function AddProductPage() {
   // Update subcategories when category changes
   useEffect(() => {
     if (formData.category) {
-      const subs = categories.filter(cat => cat.parent === formData.category);
+      const subs = categories.filter(cat =>
+        cat.parent &&
+        (typeof cat.parent === 'string'
+          ? cat.parent === formData.category
+          : cat.parent._id === formData.category)
+      );
       setAvailableSubcategories(subs);
       // Reset subcategory if parent category changes
       if (!subs.find(sub => sub._id === formData.subcategory)) {
