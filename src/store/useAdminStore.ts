@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { apiClient } from '@/lib/api';
 
-import { User, Product, Order, Category, Review, Transaction, DashboardStats, SalesReport } from '@/types';
+import { User, Product, Order, Category, Review, Transaction, DashboardStats, SalesReport, Coupon } from '@/types';
 
 interface AdminState {
     // Data
@@ -13,6 +13,7 @@ interface AdminState {
     reviews: Review[];
     transactions: Transaction[];
     salesReport: SalesReport | null;
+    coupons: Coupon[];
 
 
     // UI state
@@ -41,6 +42,10 @@ interface AdminState {
     updateProductInventory: (productId: string, inventoryData: any) => Promise<void>;
     deleteProduct: (productId: string) => Promise<void>;
 
+    fetchCoupons: (params?: any) => Promise<void>;
+    createCoupon: (couponData: any) => Promise<void>;
+    updateCoupon: (couponId: string, couponData: any) => Promise<void>;
+    deleteCoupon: (couponId: string) => Promise<void>;
 
     // Orders
     fetchOrders: (params?: any) => Promise<void>;
@@ -76,6 +81,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     orders: [],
     categories: [],
     reviews: [],
+    coupons: [],
     transactions: [],
     salesReport: null,
     isLoading: false,
@@ -514,13 +520,15 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     deleteProduct: async (productId: string) => {
         set({ isLoading: true, error: null });
         try {
-            // We'll implement this API call - for now, just update local state
-            const { products } = get();
-            const updatedProducts = products.filter(product => product._id !== productId);
-            set({ products: updatedProducts, isLoading: false });
-
-            // Show success message
-            alert('Product deleted successfully!');
+            const response = await apiClient.deleteProduct(productId); // ✅ Call API
+            if (response.success) {
+                const { products } = get();
+                const updatedProducts = products.filter(product => product._id !== productId);
+                set({ products: updatedProducts, isLoading: false });
+                alert('Product deleted successfully!');
+            } else {
+                throw new Error(response.message);
+            }
         } catch (error: any) {
             set({
                 isLoading: false,
@@ -529,6 +537,84 @@ export const useAdminStore = create<AdminState>((set, get) => ({
             throw error;
         }
     },
+    fetchCoupons: async (params?: any) => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await apiClient.getAdminCoupons(params);
+            if (response.success) {
+                set({ coupons: response.data.coupons, isLoading: false });
+            } else {
+                throw new Error(response.message);
+            }
+        } catch (error: any) {
+            set({
+                isLoading: false,
+                error: error.response?.data?.message || error.message || 'Failed to fetch coupons',
+            });
+        }
+    },
+
+    createCoupon: async (couponData: any) => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await apiClient.createCoupon(couponData);
+            if (response.success) {
+                const { coupons } = get();
+                set({ coupons: [...coupons, response.data.coupon], isLoading: false });
+            } else {
+                throw new Error(response.message);
+            }
+        } catch (error: any) {
+            set({
+                isLoading: false,
+                error: error.response?.data?.message || error.message || 'Failed to create coupon',
+            });
+            throw error;
+        }
+    },
+
+    updateCoupon: async (couponId: string, couponData: any) => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await apiClient.updateCoupon(couponId, couponData);
+            if (response.success) {
+                const { coupons } = get();
+                const updatedCoupons = coupons.map(coupon =>
+                    coupon._id === couponId ? response.data.coupon : coupon
+                );
+                set({ coupons: updatedCoupons, isLoading: false });
+            } else {
+                throw new Error(response.message);
+            }
+        } catch (error: any) {
+            set({
+                isLoading: false,
+                error: error.response?.data?.message || error.message || 'Failed to update coupon',
+            });
+            throw error;
+        }
+    },
+
+    deleteCoupon: async (couponId: string) => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await apiClient.deleteCoupon(couponId);
+            if (response.success) {
+                const { coupons } = get();
+                const updatedCoupons = coupons.filter(coupon => coupon._id !== couponId);
+                set({ coupons: updatedCoupons, isLoading: false });
+            } else {
+                throw new Error(response.message);
+            }
+        } catch (error: any) {
+            set({
+                isLoading: false,
+                error: error.response?.data?.message || error.message || 'Failed to delete coupon',
+            });
+            throw error;
+        }
+    },
+
 
     // Utility
     clearError: () => {

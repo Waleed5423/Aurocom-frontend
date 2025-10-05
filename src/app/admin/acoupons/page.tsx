@@ -1,23 +1,19 @@
-// src/app/admin/acoupons/page.tsx - UPDATED
 'use client';
-
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAdminStore } from '@/store/useAdminStore';
-import { apiClient } from '@/lib/api';
-
+import { Coupon } from '@/types';
 
 export default function AdminCouponsPage() {
-  const [coupons, setCoupons] = useState([]);
+  const { coupons, fetchCoupons, deleteCoupon, categories, fetchCategories } = useAdminStore(); // ✅ Destructure deleteCoupon
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { categories } = useAdminStore();
 
   const [formData, setFormData] = useState({
     code: '',
     description: '',
-    discountType: 'percentage',
+    discountType: 'percentage' as 'percentage' | 'fixed',
     discountValue: 0,
     maxDiscount: 0,
     minOrderValue: 0,
@@ -30,27 +26,13 @@ export default function AdminCouponsPage() {
   });
 
   useEffect(() => {
-    // Fetch coupons would be implemented here
     fetchCoupons();
-    // Fetch categories for the form
-    useAdminStore.getState().fetchCategories();
+    fetchCategories();
   }, []);
-
-  const fetchCoupons = async () => {
-    try {
-      const response = await apiClient.getAdminCoupons(); 
-      if (response.success) {
-        setCoupons(response.data.coupons);
-      }
-    } catch (error) {
-      console.error('Failed to fetch coupons:', error);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
     try {
       const couponData = {
         ...formData,
@@ -304,12 +286,10 @@ export default function AdminCouponsPage() {
         {coupons.length === 0 ? (
           <div className="text-center py-8 border rounded-lg">
             <p className="text-gray-500 mb-4">No coupons found</p>
-            <Button onClick={() => setShowForm(true)}>
-              Create First Coupon
-            </Button>
+            <Button onClick={() => setShowForm(true)}>Create First Coupon</Button>
           </div>
         ) : (
-          coupons.map((coupon: any) => (
+          coupons.map((coupon: Coupon) => (
             <div key={coupon._id} className="border p-4 rounded-lg">
               <div className="flex justify-between items-start">
                 <div>
@@ -324,7 +304,17 @@ export default function AdminCouponsPage() {
                 </div>
                 <div className="space-x-2">
                   <Button variant="outline" size="sm">Edit</Button>
-                  <Button variant="destructive" size="sm">Delete</Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={async () => {
+                      if (confirm(`Delete coupon ${coupon.code}?`)) {
+                        await deleteCoupon(coupon._id); // ✅ Now works
+                      }
+                    }}
+                  >
+                    Delete
+                  </Button>
                 </div>
               </div>
             </div>

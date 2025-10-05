@@ -513,6 +513,19 @@ class ApiClient {
         const response = await this.client.delete<ApiResponse>(`/products/${productId}`);
         return response.data;
     }
+    async updateCoupon(couponId: string, couponData: any): Promise<ApiResponse> {
+        const response = await this.client.put<ApiResponse>(`/admin/coupons/${couponId}`, couponData);
+        return response.data;
+    }
+
+    async deleteCoupon(couponId: string): Promise<ApiResponse> {
+        const response = await this.client.delete<ApiResponse>(`/admin/coupons/${couponId}`);
+        return response.data;
+    }
+    async createCoupon(couponData: any): Promise<ApiResponse> {
+        const response = await this.client.post<ApiResponse>('/admin/coupons', couponData);
+        return response.data;
+    }
 }
 
 export const apiClient = new ApiClient();
