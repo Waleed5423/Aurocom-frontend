@@ -111,25 +111,38 @@ export default function AddProductPage() {
   const addVariantValue = (variantIndex: number) => {
     setVariants(prev => prev.map((variant, i) =>
       i === variantIndex
-        ? { ...variant, values: [...variant.values, { value: '', price: 0, stock: 0 }] }
+        ? {
+          ...variant,
+          values: [...variant.values, { value: '', price: 0, stock: 0 }]
+        }
         : variant
     ));
   };
 
+  // Fix the removeVariantValue function (line ~127)
   const removeVariantValue = (variantIndex: number, valueIndex: number) => {
-    setVariants(prev => prev.map((variant, i) =>
-      i === variantIndex
-        ? { ...variant, values: variant.values.filter((_, j) => j !== valueIndex) }
-        : variant
-    ));
-  };
-
-  const updateVariantValue = (variantIndex: number, valueIndex: number, field: string, value: any) => {
     setVariants(prev => prev.map((variant, i) =>
       i === variantIndex
         ? {
           ...variant,
-          values: variant.values.map((val, j) =>
+          values: variant.values.filter((_: any, j: number) => j !== valueIndex)
+        }
+        : variant
+    ));
+  };
+
+  // Fix the updateVariantValue function (line ~143)
+  const updateVariantValue = (
+    variantIndex: number,
+    valueIndex: number,
+    field: string,
+    value: string | number
+  ) => {
+    setVariants(prev => prev.map((variant, i) =>
+      i === variantIndex
+        ? {
+          ...variant,
+          values: variant.values.map((val: any, j: number) =>
             j === valueIndex ? { ...val, [field]: value } : val
           )
         }
@@ -464,7 +477,7 @@ export default function AddProductPage() {
               </div>
 
               <div className="space-y-3">
-                {variant.values.map((value, valueIndex) => (
+                {variant.values.map((value: { value: string; price: number; stock: number }, valueIndex: number) => (
                   <div key={valueIndex} className="flex gap-3 items-center">
                     <Input
                       placeholder="Value (e.g., Small, Red)"
@@ -476,13 +489,13 @@ export default function AddProductPage() {
                       step="0.01"
                       placeholder="Price"
                       value={value.price}
-                      onChange={(e) => updateVariantValue(variantIndex, valueIndex, 'price', parseFloat(e.target.value))}
+                      onChange={(e) => updateVariantValue(variantIndex, valueIndex, 'price', parseFloat(e.target.value) || 0)}
                     />
                     <Input
                       type="number"
                       placeholder="Stock"
                       value={value.stock}
-                      onChange={(e) => updateVariantValue(variantIndex, valueIndex, 'stock', parseInt(e.target.value))}
+                      onChange={(e) => updateVariantValue(variantIndex, valueIndex, 'stock', parseInt(e.target.value) || 0)}
                     />
                     <Button
                       type="button"
@@ -505,7 +518,6 @@ export default function AddProductPage() {
               </div>
             </div>
           ))}
-
           {variants.length === 0 && (
             <p className="text-gray-500 text-center py-4">
               No variants added. Add variants like sizes, colors, etc.

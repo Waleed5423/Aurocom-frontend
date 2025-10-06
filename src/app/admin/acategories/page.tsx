@@ -1,4 +1,4 @@
-// src/app/admin/acategories/page.tsx - UPDATED CATEGORY CREATION LOGIC
+// src/app/admin/acategories/page.tsx - FIXED VERSION
 'use client';
 
 import { useEffect, useState } from 'react';

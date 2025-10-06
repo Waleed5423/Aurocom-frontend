@@ -6,8 +6,9 @@ import { useAdminStore } from '@/store/useAdminStore';
 import { Coupon } from '@/types';
 
 export default function AdminCouponsPage() {
-  const { coupons, fetchCoupons, deleteCoupon, categories, fetchCategories } = useAdminStore(); // ✅ Destructure deleteCoupon
+  const { coupons, fetchCoupons, deleteCoupon, updateCoupon, categories, fetchCategories } = useAdminStore();
   const [showForm, setShowForm] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -23,12 +24,39 @@ export default function AdminCouponsPage() {
     expiresAt: '',
     applicableCategories: [] as string[],
     excludedProducts: [] as string[],
+    isActive: true
   });
 
   useEffect(() => {
     fetchCoupons();
     fetchCategories();
   }, []);
+
+  // Reset form when switching between add and edit modes
+  useEffect(() => {
+    if (editingCoupon) {
+      setFormData({
+        code: editingCoupon.code,
+        description: editingCoupon.description || '',
+        discountType: editingCoupon.discountType,
+        discountValue: editingCoupon.discountValue,
+        maxDiscount: editingCoupon.maxDiscount || 0,
+        minOrderValue: editingCoupon.minOrderValue || 0,
+        usageLimit: editingCoupon.usageLimit || 0,
+        userLimit: editingCoupon.userLimit || 0,
+        validFrom: new Date(editingCoupon.validFrom).toISOString().slice(0, 16),
+        expiresAt: new Date(editingCoupon.expiresAt).toISOString().slice(0, 16),
+        applicableCategories: editingCoupon.applicableCategories?.map(cat =>
+          typeof cat === 'string' ? cat : cat._id
+        ) || [],
+        excludedProducts: editingCoupon.excludedProducts?.map(prod =>
+          typeof prod === 'string' ? prod : prod._id
+        ) || [],
+        isActive: editingCoupon.isActive
+      });
+      setShowForm(true);
+    }
+  }, [editingCoupon]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,49 +71,64 @@ export default function AdminCouponsPage() {
         userLimit: formData.userLimit ? Number(formData.userLimit) : undefined,
         applicableCategories: formData.applicableCategories.length > 0 ? formData.applicableCategories : undefined,
         excludedProducts: formData.excludedProducts.length > 0 ? formData.excludedProducts : undefined,
+        isActive: formData.isActive
       };
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/admin/coupons`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        },
-        body: JSON.stringify(couponData),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          alert('Coupon created successfully!');
-          setShowForm(false);
-          setFormData({
-            code: '',
-            description: '',
-            discountType: 'percentage',
-            discountValue: 0,
-            maxDiscount: 0,
-            minOrderValue: 0,
-            usageLimit: 0,
-            userLimit: 0,
-            validFrom: new Date().toISOString().slice(0, 16),
-            expiresAt: '',
-            applicableCategories: [],
-            excludedProducts: [],
-          });
-          fetchCoupons();
-        } else {
-          throw new Error(result.message);
-        }
+      if (editingCoupon) {
+        // Update existing coupon using the store method
+        await updateCoupon(editingCoupon._id, couponData);
+        alert('Coupon updated successfully!');
       } else {
-        throw new Error('Failed to create coupon');
+        // Create new coupon
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/admin/coupons`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify(couponData),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            alert('Coupon created successfully!');
+          } else {
+            throw new Error(result.message);
+          }
+        } else {
+          throw new Error('Failed to create coupon');
+        }
       }
+
+      resetForm();
+      fetchCoupons();
     } catch (error) {
-      console.error('Error creating coupon:', error);
-      alert('Failed to create coupon: ' + (error as Error).message);
+      console.error('Error saving coupon:', error);
+      alert(`Failed to ${editingCoupon ? 'update' : 'create'} coupon: ${(error as Error).message}`);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingCoupon(null);
+    setFormData({
+      code: '',
+      description: '',
+      discountType: 'percentage',
+      discountValue: 0,
+      maxDiscount: 0,
+      minOrderValue: 0,
+      usageLimit: 0,
+      userLimit: 0,
+      validFrom: new Date().toISOString().slice(0, 16),
+      expiresAt: '',
+      applicableCategories: [],
+      excludedProducts: [],
+      isActive: true
+    });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -105,16 +148,31 @@ export default function AdminCouponsPage() {
     }));
   };
 
+  const handleEdit = (coupon: Coupon) => {
+    setEditingCoupon(coupon);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Coupons Management</h1>
-        <Button onClick={() => setShowForm(true)}>Create Coupon</Button>
+        <Button onClick={() => {
+          resetForm();
+          setShowForm(true);
+        }}>
+          Create Coupon
+        </Button>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="border p-6 mb-6 rounded-lg bg-white shadow-sm">
-          <h3 className="text-xl font-semibold mb-4">Create New Coupon</h3>
+          <h3 className="text-xl font-semibold mb-4">
+            {editingCoupon ? 'Edit Coupon' : 'Create New Coupon'}
+          </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Basic Information */}
@@ -128,7 +186,11 @@ export default function AdminCouponsPage() {
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                   className="w-full"
                   required
+                  disabled={!!editingCoupon} // Disable code editing for existing coupons
                 />
+                {editingCoupon && (
+                  <p className="text-xs text-gray-500 mt-1">Coupon code cannot be changed</p>
+                )}
               </div>
 
               <div>
@@ -169,6 +231,17 @@ export default function AdminCouponsPage() {
                   className="w-full"
                   required
                 />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  name="isActive"
+                  checked={formData.isActive}
+                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <label className="text-sm font-medium">Active Coupon</label>
               </div>
             </div>
 
@@ -273,9 +346,9 @@ export default function AdminCouponsPage() {
 
           <div className="flex space-x-3 mt-6">
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creating...' : 'Create Coupon'}
+              {isLoading ? 'Saving...' : (editingCoupon ? 'Update' : 'Create') + ' Coupon'}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+            <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
           </div>
@@ -290,26 +363,54 @@ export default function AdminCouponsPage() {
           </div>
         ) : (
           coupons.map((coupon: Coupon) => (
-            <div key={coupon._id} className="border p-4 rounded-lg">
+            <div key={coupon._id} className="border p-4 rounded-lg bg-white">
               <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-semibold text-lg">{coupon.code}</h3>
-                  <p className="text-gray-600">{coupon.description}</p>
-                  <div className="flex space-x-4 mt-2 text-sm">
-                    <span>Discount: {coupon.discountValue}{coupon.discountType === 'percentage' ? '%' : '$'}</span>
-                    {coupon.maxDiscount && <span>Max: ${coupon.maxDiscount}</span>}
-                    <span>Used: {coupon.usedCount}/{coupon.usageLimit || '∞'}</span>
-                    <span>Expires: {new Date(coupon.expiresAt).toLocaleDateString()}</span>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h3 className="font-semibold text-lg">{coupon.code}</h3>
+                    <span className={`px-2 py-1 text-xs rounded ${coupon.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                      {coupon.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                    <span className={`px-2 py-1 text-xs rounded ${coupon.discountType === 'percentage' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                      }`}>
+                      {coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `$${coupon.discountValue}`}
+                    </span>
+                  </div>
+                  {coupon.description && (
+                    <p className="text-gray-600 mb-2">{coupon.description}</p>
+                  )}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                    <div>
+                      <span className="font-medium">Used:</span> {coupon.usedCount}/{coupon.usageLimit || '∞'}
+                    </div>
+                    <div>
+                      <span className="font-medium">Expires:</span> {new Date(coupon.expiresAt).toLocaleDateString()}
+                    </div>
+                    <div>
+                      <span className="font-medium">Min Order:</span> ${coupon.minOrderValue || 'None'}
+                    </div>
+                    {coupon.maxDiscount && (
+                      <div>
+                        <span className="font-medium">Max Discount:</span> ${coupon.maxDiscount}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="space-x-2">
-                  <Button variant="outline" size="sm">Edit</Button>
+                <div className="flex flex-col space-y-2 ml-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(coupon)}
+                  >
+                    Edit
+                  </Button>
                   <Button
                     variant="destructive"
                     size="sm"
                     onClick={async () => {
                       if (confirm(`Delete coupon ${coupon.code}?`)) {
-                        await deleteCoupon(coupon._id); // ✅ Now works
+                        await deleteCoupon(coupon._id);
                       }
                     }}
                   >
