@@ -1,4 +1,7 @@
-// src/components/layout/Footer.tsx
+// src/components/layout/Footer.tsx - UPDATED
+'use client';
+
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,10 +16,30 @@ import {
 } from 'lucide-react';
 
 export default function Footer() {
+    const pathname = usePathname();
+
+    // Don't show footer on auth pages
+    if (pathname.startsWith('/login') ||
+        pathname.startsWith('/register') ||
+        pathname.startsWith('/forgot-password') ||
+        pathname.startsWith('/reset-password') ||
+        pathname.startsWith('/verify-email') ||
+        pathname.startsWith('/admin/adashboard') ||
+        pathname.startsWith('/admin/aproducts') ||
+        pathname.startsWith('/admin/acategories') ||
+        pathname.startsWith('/admin/aorders') ||
+        pathname.startsWith('/admin/ausers') ||
+        pathname.startsWith('/admin/areviews') ||
+        pathname.startsWith('/admin/atransactions') ||
+        pathname.startsWith('/admin/acoupons')) {
+        return null;
+    }
+
     return (
         <footer className="bg-gray-900 text-white">
+            {/* ... rest of the existing footer code remains the same ... */}
             {/* Newsletter Section */}
-            <div className="bg-blue-600">
+            {/* <div className="bg-blue-600">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                         <div>
@@ -37,10 +60,10 @@ export default function Footer() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> */}
 
             {/* Main Footer */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     {/* Company Info */}
                     <div className="lg:col-span-1">
@@ -71,12 +94,12 @@ export default function Footer() {
                         <h3 className="font-semibold text-lg mb-4">Quick Links</h3>
                         <ul className="space-y-2">
                             <li>
-                                <Link href="/products" className="text-gray-400 hover:text-white transition-colors">
+                                <Link href="/shop/products" className="text-gray-400 hover:text-white transition-colors">
                                     All Products
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/categories" className="text-gray-400 hover:text-white transition-colors">
+                                <Link href="/shop/categories" className="text-gray-400 hover:text-white transition-colors">
                                     Categories
                                 </Link>
                             </li>

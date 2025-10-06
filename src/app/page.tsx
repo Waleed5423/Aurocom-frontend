@@ -76,7 +76,7 @@ export default function HomePage() {
     <Card className="group hover:shadow-xl transition-all duration-300 border-0 shadow-sm">
       <CardContent className="p-0">
         <div className="relative overflow-hidden">
-          <Link href={`/product/${product._id}`}>
+          <Link href={`/shop/product/${product._id}`}>
             <img
               src={product.images?.[0]?.url || '/placeholder-product.jpg'}
               alt={product.name}
@@ -96,7 +96,7 @@ export default function HomePage() {
         </div>
 
         <div className="p-4">
-          <Link href={`/product/${product._id}`}>
+          <Link href={`/shop/product/${product._id}`}>
             <h3 className="font-semibold text-lg mb-2 hover:text-blue-600 transition-colors line-clamp-2">
               {product.name}
             </h3>
@@ -158,7 +158,7 @@ export default function HomePage() {
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button asChild size="lg" className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-3">
-                  <Link href="/products" className="flex items-center">
+                  <Link href="/shop/products" className="flex items-center">
                     Start Shopping
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
@@ -266,7 +266,7 @@ export default function HomePage() {
 
           <div className="text-center mt-12">
             <Button asChild size="lg" variant="outline">
-              <Link href="/products?featured=true" className="flex items-center">
+              <Link href="/shop/products?featured=true" className="flex items-center">
                 View All Featured Products
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -291,7 +291,7 @@ export default function HomePage() {
             {categories.map((category) => (
               <Link
                 key={category._id}
-                href={`/category/${category._id}`}
+                href={`/shop/category/${category._id}`}
                 className="group text-center p-6 bg-gray-50 rounded-xl hover:bg-blue-50 hover:shadow-lg transition-all duration-300"
               >
                 <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
@@ -317,7 +317,7 @@ export default function HomePage() {
 
           <div className="text-center mt-12">
             <Button asChild size="lg" variant="outline">
-              <Link href="/categories" className="flex items-center">
+              <Link href="/shop/categories" className="flex items-center">
                 Browse All Categories
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -339,7 +339,7 @@ export default function HomePage() {
               </p>
             </div>
             <Button asChild variant="outline">
-              <Link href="/products?sortBy=createdAt" className="flex items-center">
+              <Link href="/shop/products?sortBy=createdAt" className="flex items-center">
                 View All
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -384,10 +384,10 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="bg-white text-orange-600 hover:bg-gray-100">
-                <Link href="/products?category=electronics">Shop Electronics</Link>
+                <Link href="/shop/products?category=electronics">Shop Electronics</Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white/10">
-                <Link href="/products?featured=true">View All Deals</Link>
+                <Link href="/shop/products?featured=true">View All Deals</Link>
               </Button>
             </div>
           </div>
@@ -455,7 +455,7 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
-              <Link href="/products">Start Shopping Now</Link>
+              <Link href="/shop/products">Start Shopping Now</Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white/10">
               <Link href="/register">Create Account</Link>

@@ -1,4 +1,4 @@
-// src/components/layout/Navbar.tsx
+// src/components/layout/Navbar.tsx - UPDATED
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,15 +10,14 @@ import { useUserStore } from '@/store/useUserStore';
 import { apiClient } from '@/lib/api';
 import { Category } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
-    Search,
     ShoppingCart,
     User,
     Menu,
     X,
     Heart,
-    ChevronDown
+    ChevronDown,
+    Search
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -29,7 +28,7 @@ export default function Navbar() {
 
     const [categories, setCategories] = useState<Category[]>([]);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [cartSidebarOpen, setCartSidebarOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
@@ -54,13 +53,6 @@ export default function Navbar() {
         }
     };
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (searchQuery.trim()) {
-            window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
-        }
-    };
-
     const handleLogout = async () => {
         try {
             await logout();
@@ -74,270 +66,314 @@ export default function Navbar() {
         return pathname === path;
     };
 
+    // Don't show navbar on auth pages
+    if (pathname.startsWith('/login') ||
+        pathname.startsWith('/admin/adashboard') ||
+        pathname.startsWith('/admin/aproducts') ||
+        pathname.startsWith('/admin/acategories') ||
+        pathname.startsWith('/admin/aorders') ||
+        pathname.startsWith('/admin/ausers') ||
+        pathname.startsWith('/admin/areviews') ||
+        pathname.startsWith('/admin/atransactions') ||
+        pathname.startsWith('/admin/acoupons') ||
+        pathname.startsWith('/register') ||
+        pathname.startsWith('/forgot-password') ||
+        pathname.startsWith('/reset-password') ||
+        pathname.startsWith('/verify-email')) {
+        return null;
+    }
+
     return (
-        <header className={`sticky top-0 z-50 bg-white border-b border-gray-200 transition-all duration-300 ${scrolled ? 'shadow-md' : ''
-            }`}>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Top Bar */}
-                <div className="flex items-center justify-between h-16">
-                    {/* Logo */}
-                    <Link href="/" className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">A</span>
+        <>
+            <header className={`sticky top-0 z-50 bg-white border-b border-gray-200 transition-all duration-300 ${scrolled ? 'shadow-md' : ''
+                }`}>
+                <div className=" mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* {isAuthenticated && user && (
+                        <div className="bg-blue-600 text-white py-1 px-4 text-center text-sm">
+                            Welcome back, <span className="font-semibold">{user.name}</span>!
                         </div>
-                        <span className="text-xl font-bold text-gray-900">Aurocom</span>
-                    </Link>
+                    )} */}
 
-                    {/* Desktop Navigation */}
-                    <nav className="hidden lg:flex items-center space-x-8">
-                        <Link
-                            href="/products"
-                            className={`font-medium transition-colors hover:text-blue-600 ${isActivePath('/products') ? 'text-blue-600' : 'text-gray-700'
-                                }`}
-                        >
-                            Products
-                        </Link>
-                        <div className="relative group">
-                            <button className="flex items-center space-x-1 font-medium text-gray-700 hover:text-blue-600 transition-colors">
-                                <span>Categories</span>
-                                <ChevronDown className="h-4 w-4" />
-                            </button>
-                            <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
-                                <div className="p-4">
-                                    <h3 className="font-semibold text-gray-900 mb-3">Shop by Category</h3>
-                                    <div className="space-y-2">
-                                        {categories.slice(0, 6).map((category) => (
-                                            <Link
-                                                key={category._id}
-                                                href={`/category/${category._id}`}
-                                                className="block py-2 px-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors"
-                                            >
-                                                {category.name}
-                                            </Link>
-                                        ))}
-                                        <Link
-                                            href="/categories"
-                                            className="block py-2 px-3 text-blue-600 font-medium hover:bg-blue-50 rounded-md transition-colors"
-                                        >
-                                            View All Categories →
-                                        </Link>
-                                    </div>
-                                </div>
+                    <div className="flex items-center justify-between h-16">
+                        {/* Logo */}
+                        <Link href="/" className="flex items-center space-x-2">
+                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                                <span className="text-white font-bold text-sm">A</span>
                             </div>
-                        </div>
-                        <Link
-                            href="/about"
-                            className={`font-medium transition-colors hover:text-blue-600 ${isActivePath('/about') ? 'text-blue-600' : 'text-gray-700'
-                                }`}
-                        >
-                            About
-                        </Link>
-                        <Link
-                            href="/contact"
-                            className={`font-medium transition-colors hover:text-blue-600 ${isActivePath('/contact') ? 'text-blue-600' : 'text-gray-700'
-                                }`}
-                        >
-                            Contact
-                        </Link>
-                    </nav>
-
-                    {/* Search Bar - Desktop */}
-                    <div className="hidden lg:block flex-1 max-w-md mx-8">
-                        <form onSubmit={handleSearch} className="relative">
-                            <Input
-                                type="text"
-                                placeholder="Search products..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 pr-4 w-full"
-                            />
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                        </form>
-                    </div>
-
-                    {/* User Actions */}
-                    <div className="flex items-center space-x-4">
-                        {/* Search Button - Mobile */}
-                        <button
-                            className="lg:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors"
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        >
-                            <Search className="h-5 w-5" />
-                        </button>
-
-                        {/* Wishlist */}
-                        <Link
-                            href="/wishlist"
-                            className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative"
-                        >
-                            <Heart className="h-5 w-5" />
-                            {wishlist.length > 0 && (
-                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                    {wishlist.length}
-                                </span>
-                            )}
+                            <span className="text-xl font-bold text-gray-900">Aurocom</span>
                         </Link>
 
-                        {/* Cart */}
-                        <Link
-                            href="/cart"
-                            className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative"
-                        >
-                            <ShoppingCart className="h-5 w-5" />
-                            {itemCount > 0 && (
-                                <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                    {itemCount}
-                                </span>
-                            )}
-                        </Link>
-
-                        {/* User Account */}
-                        {isAuthenticated ? (
+                        {/* Desktop Navigation */}
+                        <nav className="hidden lg:flex items-center space-x-8">
+                            <Link
+                                href="/shop/products"
+                                className={`font-medium transition-colors hover:text-blue-600 ${isActivePath('/products') ? 'text-blue-600' : 'text-gray-700'
+                                    }`}
+                            >
+                                Products
+                            </Link>
                             <div className="relative group">
-                                <button className="flex items-center space-x-2 p-2 text-gray-600 hover:text-blue-600 transition-colors">
-                                    <User className="h-5 w-5" />
-                                    <span className="hidden sm:block text-sm font-medium">
-                                        {user?.name?.split(' ')[0]}
-                                    </span>
+                                <button className="flex items-center space-x-1 font-medium text-gray-700 hover:text-blue-600 transition-colors">
+                                    <span>Categories</span>
+                                    <ChevronDown className="h-4 w-4" />
                                 </button>
-                                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
-                                    <div className="p-2">
-                                        <Link
-                                            href="/dashboard"
-                                            className="block px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors"
-                                        >
-                                            Dashboard
-                                        </Link>
-                                        <Link
-                                            href="/orders"
-                                            className="block px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors"
-                                        >
-                                            My Orders
-                                        </Link>
-                                        <Link
-                                            href="/profile"
-                                            className="block px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors"
-                                        >
-                                            Profile
-                                        </Link>
-                                        <button
-                                            onClick={handleLogout}
-                                            className="block w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                        >
-                                            Sign Out
-                                        </button>
+                                <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
+                                    <div className="p-4">
+                                        <h3 className="font-semibold text-gray-900 mb-3">Shop by Category</h3>
+                                        <div className="space-y-2">
+                                            {categories.slice(0, 6).map((category) => (
+                                                <Link
+                                                    key={category._id}
+                                                    href={`/shop/category/${category._id}`}
+                                                    className="block py-2 px-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors"
+                                                >
+                                                    {category.name}
+                                                </Link>
+                                            ))}
+                                            <Link
+                                                href="/shop/categories"
+                                                className="block py-2 px-3 text-blue-600 font-medium hover:bg-blue-50 rounded-md transition-colors"
+                                            >
+                                                View All Categories →
+                                            </Link>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="hidden sm:flex items-center space-x-2">
-                                <Button asChild variant="ghost" size="sm">
-                                    <Link href="/login">Sign In</Link>
-                                </Button>
-                                <Button asChild size="sm">
-                                    <Link href="/register">Sign Up</Link>
-                                </Button>
-                            </div>
-                        )}
+                            <Link
+                                href="/about"
+                                className={`font-medium transition-colors hover:text-blue-600 ${isActivePath('/about') ? 'text-blue-600' : 'text-gray-700'
+                                    }`}
+                            >
+                                About
+                            </Link>
+                            <Link
+                                href="/contact"
+                                className={`font-medium transition-colors hover:text-blue-600 ${isActivePath('/contact') ? 'text-blue-600' : 'text-gray-700'
+                                    }`}
+                            >
+                                Contact
+                            </Link>
+                        </nav>
 
-                        {/* Mobile Menu Button */}
-                        <button
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="lg:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors"
-                        >
-                            {mobileMenuOpen ? (
-                                <X className="h-5 w-5" />
+                        {/* User Actions */}
+                        <div className="flex items-center space-x-4">
+                            {/* Search Button */}
+                            <Link
+                                href="/search"
+                                className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
+                            >
+                                <Search className="h-5 w-5" />
+                            </Link>
+
+                            {/* Wishlist */}
+                            <Link
+                                href="/wishlist"
+                                className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative"
+                            >
+                                <Heart className="h-5 w-5" />
+                                {wishlist.length > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                        {wishlist.length}
+                                    </span>
+                                )}
+                            </Link>
+
+                            {/* Cart with Sidebar */}
+                            <button
+                                onClick={() => setCartSidebarOpen(true)}
+                                className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative"
+                            >
+                                <ShoppingCart className="h-5 w-5" />
+                                {itemCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                        {itemCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* User Account */}
+                            {isAuthenticated ? (
+                                <div className="relative group">
+                                    <button className="flex items-center space-x-2 p-2 text-gray-600 hover:text-blue-600 transition-colors">
+                                        <User className="h-5 w-5" />
+                                        <span className="hidden sm:block text-sm font-medium">
+                                            {user?.name?.split(' ')[0]}
+                                        </span>
+                                    </button>
+                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
+                                        <div className="p-2">
+                                            <Link
+                                                href="/dashboard"
+                                                className="block px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors"
+                                            >
+                                                Dashboard
+                                            </Link>
+                                            <Link
+                                                href="/orders"
+                                                className="block px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors"
+                                            >
+                                                My Orders
+                                            </Link>
+                                            <Link
+                                                href="/profile"
+                                                className="block px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors"
+                                            >
+                                                Profile
+                                            </Link>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="block w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                            >
+                                                Sign Out
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             ) : (
-                                <Menu className="h-5 w-5" />
+                                <div className="hidden sm:flex items-center space-x-2">
+                                    <Button asChild variant="ghost" size="sm">
+                                        <Link href="/login">Sign In</Link>
+                                    </Button>
+                                    <Button asChild size="sm">
+                                        <Link href="/register">Sign Up</Link>
+                                    </Button>
+                                </div>
                             )}
-                        </button>
+
+                            {/* Mobile Menu Button */}
+                            <button
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                className="lg:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors"
+                            >
+                                {mobileMenuOpen ? (
+                                    <X className="h-5 w-5" />
+                                ) : (
+                                    <Menu className="h-5 w-5" />
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                {/* Mobile Search Bar */}
+                {/* Mobile Menu */}
                 {mobileMenuOpen && (
-                    <div className="lg:hidden pb-4">
-                        <form onSubmit={handleSearch} className="relative">
-                            <Input
-                                type="text"
-                                placeholder="Search products..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 pr-4 w-full"
-                            />
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                        </form>
-                    </div>
-                )}
-            </div>
-
-            {/* Mobile Menu */}
-            {mobileMenuOpen && (
-                <div className="lg:hidden border-t border-gray-200 bg-white">
-                    <div className="px-4 py-6 space-y-4">
-                        <Link
-                            href="/products"
-                            className="block text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
-                            onClick={() => setMobileMenuOpen(false)}
-                        >
-                            Products
-                        </Link>
-
-                        <div>
-                            <h3 className="text-lg font-medium text-gray-900 mb-3">Categories</h3>
-                            <div className="grid grid-cols-2 gap-2">
-                                {categories.slice(0, 6).map((category) => (
-                                    <Link
-                                        key={category._id}
-                                        href={`/category/${category._id}`}
-                                        className="block py-2 px-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors text-sm"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                    >
-                                        {category.name}
-                                    </Link>
-                                ))}
-                            </div>
+                    <div className="lg:hidden border-t border-gray-200 bg-white">
+                        <div className="px-4 py-6 space-y-4">
                             <Link
-                                href="/categories"
-                                className="block mt-3 py-2 px-3 text-blue-600 font-medium hover:bg-blue-50 rounded-md transition-colors text-sm"
+                                href="/shop/products"
+                                className="block text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
                                 onClick={() => setMobileMenuOpen(false)}
                             >
-                                View All Categories
+                                Products
                             </Link>
-                        </div>
 
-                        <Link
-                            href="/about"
-                            className="block text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
-                            onClick={() => setMobileMenuOpen(false)}
-                        >
-                            About
-                        </Link>
-                        <Link
-                            href="/contact"
-                            className="block text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
-                            onClick={() => setMobileMenuOpen(false)}
-                        >
-                            Contact
-                        </Link>
-
-                        {!isAuthenticated && (
-                            <div className="pt-4 border-t border-gray-200">
-                                <Button asChild className="w-full mb-2">
-                                    <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                                        Sign In
-                                    </Link>
-                                </Button>
-                                <Button asChild variant="outline" className="w-full">
-                                    <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
-                                        Sign Up
-                                    </Link>
-                                </Button>
+                            <div>
+                                <h3 className="text-lg font-medium text-gray-900 mb-3">Categories</h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {categories.slice(0, 6).map((category) => (
+                                        <Link
+                                            key={category._id}
+                                            href={`/shop/category/${category._id}`}
+                                            className="block py-2 px-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors text-sm"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                        >
+                                            {category.name}
+                                        </Link>
+                                    ))}
+                                </div>
+                                <Link
+                                    href="/shop/categories"
+                                    className="block mt-3 py-2 px-3 text-blue-600 font-medium hover:bg-blue-50 rounded-md transition-colors text-sm"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    View All Categories
+                                </Link>
                             </div>
-                        )}
+
+                            <Link
+                                href="/about"
+                                className="block text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                About
+                            </Link>
+                            <Link
+                                href="/contact"
+                                className="block text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Contact
+                            </Link>
+
+                            {!isAuthenticated && (
+                                <div className="pt-4 border-t border-gray-200">
+                                    <Button asChild className="w-full mb-2">
+                                        <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                                            Sign In
+                                        </Link>
+                                    </Button>
+                                    <Button asChild variant="outline" className="w-full">
+                                        <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
+                                            Sign Up
+                                        </Link>
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </header>
+
+            {/* Cart Sidebar */}
+            {cartSidebarOpen && (
+                <div className="fixed inset-0 z-50 overflow-hidden">
+                    <div className="absolute inset-0 overflow-hidden">
+                        {/* Background overlay */}
+                        <div
+                            className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
+                            onClick={() => setCartSidebarOpen(false)}
+                        />
+
+                        {/* Sidebar panel */}
+                        <div className="absolute inset-y-0 right-0 max-w-full flex">
+                            <div className="relative w-screen max-w-md">
+                                <div className="h-full flex flex-col bg-white shadow-xl">
+                                    <div className="flex-1 overflow-y-auto">
+                                        {/* Header */}
+                                        <div className="flex items-center justify-between px-4 py-6 border-b">
+                                            <h2 className="text-lg font-semibold">Shopping Cart</h2>
+                                            <button
+                                                onClick={() => setCartSidebarOpen(false)}
+                                                className="p-2 text-gray-400 hover:text-gray-500"
+                                            >
+                                                <X className="h-6 w-6" />
+                                            </button>
+                                        </div>
+
+                                        {/* Cart content would go here */}
+                                        <div className="flex-1 px-4 py-6">
+                                            <div className="text-center text-gray-500">
+                                                <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                                                <p>Your cart is empty</p>
+                                                <Button
+                                                    asChild
+                                                    className="mt-4"
+                                                    onClick={() => setCartSidebarOpen(false)}
+                                                >
+                                                    <Link href="/shop/products">
+                                                        Start Shopping
+                                                    </Link>
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
-        </header>
+        </>
     );
 }

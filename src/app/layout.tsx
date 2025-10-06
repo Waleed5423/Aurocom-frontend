@@ -17,9 +17,6 @@ export default function RootLayout({
         <AuthProvider>
           <SocketProvider>
             <div className="min-h-screen flex flex-col">
-              <div className="bg-blue-600 text-white py-2 px-4 text-center text-sm">
-                🚀 Free shipping on orders over $50! Limited time offer.
-              </div>
               <Navbar />
               <main className="flex-1">
                 {children}
