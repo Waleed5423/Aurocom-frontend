@@ -50,13 +50,21 @@ export const useCart = create<CartState>()(
             getCart: async () => {
                 set({ isLoading: true, error: null });
                 try {
+                    console.log('🔄 Fetching cart from API...');
                     const response = await apiClient.getCart();
+                    console.log('📦 Full API Response:', response);
+
                     if (response.success) {
+                        console.log('✅ Cart data received:', response.data);
+                        console.log('🛍️ Cart items:', response.data.cart?.items);
                         set({ cart: response.data.cart, isLoading: false });
                     } else {
+                        console.error('❌ API returned error:', response.message);
                         throw new Error(response.message);
                     }
                 } catch (error: any) {
+                    console.error('💥 Failed to fetch cart:', error);
+                    console.error('Error details:', error.response?.data);
                     set({
                         isLoading: false,
                         error: error.response?.data?.message || error.message || 'Failed to fetch cart',
@@ -67,18 +75,29 @@ export const useCart = create<CartState>()(
             addToCart: async (product: Product, quantity: number = 1, variant?: any) => {
                 set({ isLoading: true, error: null });
                 try {
+                    console.log('🛒 Adding to cart:', {
+                        productId: product._id,
+                        productName: product.name,
+                        quantity,
+                        variant
+                    });
+
                     const response = await apiClient.addToCart({
                         productId: product._id,
                         quantity,
                         variant,
                     });
 
+                    console.log('📦 Add to cart response:', response);
+
                     if (response.success) {
+                        console.log('✅ Cart after adding:', response.data.cart);
                         set({ cart: response.data.cart, isLoading: false });
                     } else {
                         throw new Error(response.message);
                     }
                 } catch (error: any) {
+                    console.error('❌ Add to cart error:', error);
                     set({
                         isLoading: false,
                         error: error.response?.data?.message || error.message || 'Failed to add item to cart',
@@ -88,7 +107,11 @@ export const useCart = create<CartState>()(
             },
 
             updateCartItem: async (itemId: string, quantity: number) => {
-                if (quantity < 1) return;
+                // 🛠️ FIX: Remove item when quantity is less than 1
+                if (quantity < 1) {
+                    await get().removeFromCart(itemId);
+                    return;
+                }
 
                 set({ isLoading: true, error: null });
                 try {
@@ -212,43 +235,42 @@ export const useCart = create<CartState>()(
         }
     )
 );
+// // Custom hook for cart operations
+// export const useCartOperations = () => {
+//     const {
+//         addToCart,
+//         updateCartItem,
+//         removeFromCart,
+//         isInCart,
+//         getCartItem,
+//     } = useCart();
 
-// Custom hook for cart operations
-export const useCartOperations = () => {
-    const {
-        addToCart,
-        updateCartItem,
-        removeFromCart,
-        isInCart,
-        getCartItem,
-    } = useCart();
+//     const addOrUpdateCartItem = async (product: Product, quantity: number = 1, variant?: any) => {
+//         const existingItem = getCartItem(product._id, variant);
 
-    const addOrUpdateCartItem = async (product: Product, quantity: number = 1, variant?: any) => {
-        const existingItem = getCartItem(product._id, variant);
+//         if (existingItem) {
+//             const newQuantity = existingItem.quantity + quantity;
+//             await updateCartItem(existingItem._id, newQuantity);
+//         } else {
+//             await addToCart(product, quantity, variant);
+//         }
+//     };
 
-        if (existingItem) {
-            const newQuantity = existingItem.quantity + quantity;
-            await updateCartItem(existingItem._id, newQuantity);
-        } else {
-            await addToCart(product, quantity, variant);
-        }
-    };
+//     const incrementQuantity = async (itemId: string, currentQuantity: number) => {
+//         await updateCartItem(itemId, currentQuantity + 1);
+//     };
 
-    const incrementQuantity = async (itemId: string, currentQuantity: number) => {
-        await updateCartItem(itemId, currentQuantity + 1);
-    };
+//     const decrementQuantity = async (itemId: string, currentQuantity: number) => {
+//         if (currentQuantity > 1) {
+//             await updateCartItem(itemId, currentQuantity - 1);
+//         }
+//     };
 
-    const decrementQuantity = async (itemId: string, currentQuantity: number) => {
-        if (currentQuantity > 1) {
-            await updateCartItem(itemId, currentQuantity - 1);
-        }
-    };
-
-    return {
-        addOrUpdateCartItem,
-        incrementQuantity,
-        decrementQuantity,
-        isInCart,
-        getCartItem,
-    };
-};
+//     return {
+//         addOrUpdateCartItem,
+//         incrementQuantity,
+//         decrementQuantity,
+//         isInCart,
+//         getCartItem,
+//     };
+// };
